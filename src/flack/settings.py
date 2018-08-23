@@ -41,7 +41,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
 
+    'channels',
+
     'app_auth',
+    'app_ws',
 ]
 
 MIDDLEWARE = [
@@ -55,6 +58,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'flack.urls'
+
+ASGI_APPLICATION = 'flack.routing.application'
 
 TEMPLATES = [
     {
