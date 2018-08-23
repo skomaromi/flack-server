@@ -1,0 +1,151 @@
+<html>
+    <head>
+        <style>
+            * {
+                margin: 0;
+                padding: 0
+            }
+            body {
+                font-family: sans-serif;
+            }
+            .row, .col {
+                display: flex;
+            }
+            .row {
+                flex-direction: row;
+            }
+            .grow {
+                flex-grow: 1
+            }
+            .box-container {
+                margin: 5px;
+            }
+            .box {
+                padding: 15px;
+                background-color: #eee
+            }
+            .box .box {
+                background-color: #ccc;
+            }
+            #dashboard form input:not([type=file]),
+            #dashboard form select {
+                padding: 5px;
+                display: block;
+                width: 100%;
+            }
+            button {
+                margin-left: auto;
+                display: block;
+            }
+            #messages {
+                padding: 10px;
+                background-color: #fff;
+                list-style-type: none;
+                margin-bottom: 15px
+            }
+
+            #messages li {
+                margin-bottom: 15px
+            }
+            #notifications {
+                float: right;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="box-container box" id="login">
+            <h1>login</h1>
+            <small>get token using drf to auth to ws</small>
+            <form>
+                <input type="text" placeholder="username"/>
+                <input type="text" placeholder="password"/>
+                <button type="submit">login</button>
+            </form>
+        </div>
+        <div class="box-container box" id="register">
+            <h1>register</h1>
+            <small>user check and make using drf</small>
+            <form>
+                <input type="text" placeholder="username"/>
+                <input type="text" placeholder="password"/>
+                <input type="text" placeholder="confirm password"/>
+                <button type="submit">register</button>
+            </form>
+        </div>
+        <div id="dashboard">
+            <div class="row">
+                <div class="grow">
+                    <div class="box-container box" id="rooms">
+                        <h1>rooms</h1>
+                        <a href="#">room #1</a><br/>
+                        <a href="#">room #2</a><br/>
+                        <a href="#">room #3</a><br/>
+                        <br/>
+                        <div class="box" id="make-a-room">
+                            <h2>make a room</h2>
+                            <form>
+                                <p>room participants</p>
+                                <input type="text" placeholder="filter..." />
+                                <br/>
+                                <select size="3">
+                                    <option>exampleuser</option>
+                                    <option>exampleuser</option>
+                                    <option>exampleuser</option>
+                                </select><br/>
+                                <button type="submit">make</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="box-container box" id="current-room">
+                        <h1>current room</h1>
+                        <p>room name: <span id="room-name">room #2</span></p>
+                        <ul id="messages">
+                            <li>
+                                exampleuser: message 1<br/>
+                                <small>location: none</small><br/>
+                                <small>file: none</small>
+                            </li>
+                            <li>
+                                exampleuser: message 2<br/>
+                                <small>location: 55.5832&deg;, 55.5832&deg;</small><br/>
+                                <small>file: none</small>
+                            </li>
+                            <li>
+                                exampleuser: message 3<br/>
+                                <small>location: none</small><br/>
+                                <small>file: <a href="">example.jpg</a></small>
+                            </li>
+                        </ul>
+                        <div class="box" id="write-a-message">
+                            <h2>write a message</h2>
+                            <form>
+                                <p>sender: exampleuser</p>
+                                <input type="text" placeholder="text" />
+                                <input type="number" placeholder="location.latitude" />
+                                <input type="number" placeholder="location.longitude" />
+                                <span>file: </span><input type="file" placeholder="text" />
+                                <button type="submit">send</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="box-container box" id="notifications">
+                    <h1>notifications</h1>
+                    <p class="item">
+                        exampleuser<br/>
+                        room #2<br/>
+                        hello world!<br/>
+                    </p><br/>
+                    <p class="item">
+                        exampleuser<br/>
+                        room #2<br/>
+                        example.jpg<br/>
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+
+    </body>
+</html>
