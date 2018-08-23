@@ -102,7 +102,11 @@
                 })
 
                 function tokenRetrieved() {
+                    // disable login form elements
+                    $("#login form *").prop('disabled', true)
+
                     // open ws here
+
                 }
             })
         </script>

@@ -21,5 +21,5 @@ from .views import dashboard
 urlpatterns = [
     path('', dashboard, name='dashboard'),
     path('admin/', admin.site.urls),
-    path('api/auth/', include('auth.api.urls', namespace='auth-api'))
+    path('api/auth/', include('app_auth.api.urls', namespace='auth-api'))
 ]
