@@ -1,12 +1,15 @@
 <html>
     <head>
+        <title>flack-server | dashboard</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <style>
             * {
                 margin: 0;
-                padding: 0
+                padding: 0;
             }
             body {
                 font-family: sans-serif;
+                font-size: 14px;
             }
             .row, .col {
                 display: flex;
@@ -51,16 +54,70 @@
                 float: right;
             }
         </style>
+        <script>
+            $(document).ready(function () {
+                console.log("r0002 running")
+
+                // API URLs
+                var apiLoginUrl = '/api/auth/login/'
+
+                var loginMessageUi = $("#login .retrieved-message")
+                var loginTokenUi = $("#login .retrieved-token")
+                var token;
+
+                var socket;
+
+                $("#login form").submit(function (e) {
+                    e.preventDefault();
+
+                    var form = $(this)
+                    var formData = form.serialize()
+
+                    $.ajax({
+                        method: "POST",
+                        url: apiLoginUrl,
+                        data: formData,
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+
+                            loginMessageUi.text(d.message)
+
+                            if (d.token) {
+                                token = d.token
+                                loginTokenUi.text(token)
+
+                                tokenRetrieved()
+                            }
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                })
+
+                function tokenRetrieved() {
+                    // open ws here
+                }
+            })
+        </script>
     </head>
     <body>
         <div class="box-container box" id="login">
             <h1>login</h1>
             <small>get token using drf to auth to ws</small>
             <form>
-                <input type="text" placeholder="username"/>
-                <input type="text" placeholder="password"/>
+                <input type="text" name="username" placeholder="username"/>
+                <input type="text" name="password" placeholder="password"/>
                 <button type="submit">login</button>
             </form>
+            <small>message: <span class="retrieved-message">None</span></small><br/>
+            <small>token: <span class="retrieved-token">None</span></small>
         </div>
         <div class="box-container box" id="register">
             <h1>register</h1>
@@ -143,9 +200,6 @@
                     </p>
                 </div>
             </div>
-
         </div>
-
-
     </body>
 </html>
