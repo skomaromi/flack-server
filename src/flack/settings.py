@@ -45,6 +45,9 @@ INSTALLED_APPS = [
 
     'app_auth',
     'app_ws',
+    'app_rooms',
+    'app_files',
+    'app_messages',
 ]
 
 MIDDLEWARE = [
