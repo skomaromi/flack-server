@@ -21,5 +21,7 @@ from .views import dashboard
 urlpatterns = [
     path('', dashboard, name='dashboard'),
     path('admin/', admin.site.urls),
-    path('api/auth/', include('app_auth.api.urls', namespace='auth-api'))
+    path('api/auth/', include('app_auth.api.urls', namespace='auth-api')),
+    path('api/rooms/', include('app_rooms.api.urls', namespace='room-api')),
+    path('api/messages/', include('app_messages.api.urls', namespace='message-api')),
 ]

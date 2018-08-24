@@ -17,6 +17,9 @@
             .row {
                 flex-direction: row;
             }
+            .col {
+                flex-direction: column;
+            }
             .grow {
                 flex-grow: 1
             }
@@ -50,25 +53,47 @@
             #messages li {
                 margin-bottom: 15px
             }
-            #notifications {
+            .sidebar {
                 float: right;
+                width: 300px;
             }
         </style>
         <script>
+            function Room(id, messages) {
+                this.id = id
+                this.messages = []
+            }
+            function Message(id, content, sender, file, location, time) {
+                this.id = id
+                this.content = content
+                this.sender = sender
+                this.location = location
+                this.file = file
+                this.time = Date.parse(time)
+            }
+
             $(document).ready(function () {
-                console.log("r0002 running")
+                $("#catch-up form *").prop('disabled', true)
+                $("#init form *").prop('disabled', true)
+
 
                 // API URLs
                 var apiLoginUrl = '/api/auth/login/'
+                var apiRoomUpdatesUrl = '/api/rooms/'
+                var apiMessageUpdatesUrl = '/api/messages/'
 
                 var loginMessageUi = $("#login .retrieved-message")
                 var loginTokenUi = $("#login .retrieved-token")
-                var token;
+                var token
 
-                var socket;
+                var rooms = []
+
+                var socket
+
+                var currentRoomId
 
                 $("#login form").submit(function (e) {
-                    e.preventDefault();
+                    e.preventDefault()
 
                     var form = $(this)
                     var formData = form.serialize()
@@ -89,7 +114,7 @@
                                 token = d.token
                                 loginTokenUi.text(token)
 
-                                tokenRetrieved()
+                                tokenRetrievedViaLogin()
                             }
                         },
                         error: function (d) {
@@ -101,12 +126,287 @@
                     })
                 })
 
-                function tokenRetrieved() {
+                $("#catch-up form.room").submit(function (e) {
+                    e.preventDefault()
+
+                    var form = $(this)
+                    var formData = form.serialize()
+
+                    console.log({
+                        sender: '#catch-up form (room) | submit',
+                        form_data: formData
+                    })
+
+                    $.ajax({
+                        method: "GET",
+                        url: apiRoomUpdatesUrl,
+                        data: formData,
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+
+                            // once the init is done, we should not need to re-get catch-up data
+                            // $("#catch-up form.room *").prop('disabled', true)
+
+                            addRooms(d)
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                })
+
+                $("#init form.room").submit(function (e) {
+                    e.preventDefault()
+
+                    var form = $(this)
+                    var formData = form.serialize()
+
+                    console.log({
+                        sender: '#init form (room) | submit',
+                        form_data: formData
+                    })
+
+                    $.ajax({
+                        method: "GET",
+                        url: apiRoomUpdatesUrl,
+                        data: formData,
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+
+                            // once the init is done, we should not need to re-get room data
+                            // $("#init form.room *").prop('disabled', true)
+
+                            addRooms(d)
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                })
+
+                $("#init form.message").submit(function (e) {
+                    e.preventDefault()
+
+                    var form = $(this)
+                    var formData = form.serialize()
+
+                    console.log({
+                        sender: '#init form (message) | submit',
+                        form_data: formData
+                    })
+
+                    $.ajax({
+                        method: "GET",
+                        url: apiMessageUpdatesUrl,
+                        data: formData,
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+
+                            // once the init is done, we should not need to re-get message data
+                            // $("#init form.message *").prop('disabled', true)
+
+                            addMessages(d)
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                })
+
+                $(document.body).on("click", "#rooms .list a", function (e) {
+                    e.preventDefault()
+                    var clickedRoomId = $(this).attr("data-id")
+                    clickedRoomId = parseInt(clickedRoomId)
+
+                    console.log({
+                        clicked_room: clickedRoomId
+                    })
+
+                    if (currentRoomId !== clickedRoomId) {
+                        $("#messages").empty()
+                        addMessagesUi(getRoomById(clickedRoomId).messages)
+                        currentRoomId = clickedRoomId
+                    }
+                })
+
+                function getRoomById(_id) {
+                    for (var i = 0; i < rooms.length; i++) {
+                        if (rooms[i].id === _id) {
+                            return rooms[i]
+                        }
+                        else {
+                            console.log({
+                                _rooms_id: rooms[i].id,
+                                _required_id: _id
+                            })
+                        }
+                    }
+
+                    console.log("FATAL: FOUND NO ROOMS MATCHING _id!")
+                    console.log({
+                        _rooms: rooms
+                    })
+                }
+
+                function addMessagesUi(_messages) {
+                    for (var i = 0; i < _messages.length; i++) {
+                        addMessageUi(_messages[i])
+                    }
+                }
+
+                function addMessageUi(_message) {
+                    /*
+                    <li>
+                        exampleuser: message 1<br/>
+                        <small>location: none</small><br/>
+                        <small>file: none</small>
+                    </li>
+                    */
+                    var locationStr = _message.location?
+                        _message.location.latitude + "&deg;, " +
+                        _message.location.longitude + "&deg;"
+                        :
+                        "none"
+
+                    var fileStr = _message.file?
+                        "<a href='"+_message.file.url+"'>"+
+                            _message.file.name+
+                        "</a>"
+                        :
+                        "none"
+
+                    $("#messages").append(
+                        "<li>"+
+                            _message.sender + ": " + _message.content + "<br />" +
+                            "<small>location: " + locationStr + "</small><br />" +
+                            "<small>file: " + fileStr + "</small>"+
+                        "</li>"
+                    )
+                }
+
+                function parseUpdates(upd) {
+                    console.log({
+                        updates: upd
+                    })
+                }
+
+                function addRooms(_rooms) {
+                    console.log({
+                        arg: _rooms
+                    })
+                    for (var i = 0; i < _rooms.length; i++) {
+                        addRoom(_rooms[i])
+                    }
+                }
+
+                function safeAddRoom(_room) {
+                    var roomUnique = true
+                    // check if room not already added
+                    for (var i = 0; i < rooms.length; i++) {
+                        console.log({
+                            arg_room: _room,
+                            iter_room: rooms[i]
+                        })
+
+                        if (rooms[i].id === _room.id) {
+                            console.log("match found!")
+                            roomUnique = false
+                            break
+                        }
+                    }
+
+                    if (roomUnique) {
+                        addRoom(_room)
+                    }
+                }
+
+                function addRoom(_room) {
+                    roomObj = new Room(_room.id)
+                    rooms.push(roomObj)
+
+                    $("#rooms .list").append(
+                            "<a href='' data-id='" + _room.id + "'>" +
+                                "room #" + _room.id +
+                            "</a><br />"
+                    )
+                }
+
+                function addMessages(_messages) {
+                    console.log({
+                        func: 'addMessages',
+                        arg: _messages
+                    })
+                    for (var i = 0; i < _messages.length; i++) {
+                        addMessage(_messages[i])
+                    }
+
+                    console.log({
+                        rooms_after_adding: rooms
+                    })
+                }
+
+                function addMessage(_message) {
+                    var roomIdx
+
+                    // find room it belongs to
+                    for (var i = 0; i < rooms.length; i++) {
+                        if (rooms[i].id === _message.room) {
+                            roomIdx = i
+                            break
+                        }
+                    }
+
+                    if (roomIdx !== undefined) {
+                        // Message(id, content, sender, file, location, time)
+                        var msgObj = new Message(
+                            _message.id,
+                            _message.content,
+                            _message.sender,
+                            _message.file,
+                            _message.location,
+                            _message.time
+                        )
+                        rooms[roomIdx].messages.push(msgObj)
+
+                        // add to UI if room currently visible
+                        if (currentRoomId === _message.room) {
+                            addMessageUi(_message)
+                        }
+                    }
+                }
+
+                function tokenRetrievedViaLogin() {
                     // disable login form elements
                     $("#login form *").prop('disabled', true)
 
-                    // open ws here
+                    // pre-fill catch-up and init forms with token for
+                    // authenticated queries
+                    $("#catch-up form input[name=token]").val(token)
+                    $("#init form input[name=token]").val(token)
 
+                    // enable catch-up and init forms
+                    $("#catch-up form *").prop('disabled', false)
+                    $("#init form *").prop('disabled', false)
+
+                    // open ws here
                 }
             })
         </script>
@@ -138,9 +438,12 @@
                 <div class="grow">
                     <div class="box-container box" id="rooms">
                         <h1>rooms</h1>
+                        <div class="list"></div>
+                        <!--
                         <a href="#">room #1</a><br/>
                         <a href="#">room #2</a><br/>
                         <a href="#">room #3</a><br/>
+                        -->
                         <br/>
                         <div class="box" id="make-a-room">
                             <h2>make a room</h2>
@@ -159,8 +462,10 @@
                     </div>
                     <div class="box-container box" id="current-room">
                         <h1>current room</h1>
-                        <p>room name: <span id="room-name">room #2</span></p>
+                        <p>room name: <span id="room-name">room #2</span></p><br />
+                        <p>messages:</p>
                         <ul id="messages">
+                            <!--
                             <li>
                                 exampleuser: message 1<br/>
                                 <small>location: none</small><br/>
@@ -176,6 +481,7 @@
                                 <small>location: none</small><br/>
                                 <small>file: <a href="">example.jpg</a></small>
                             </li>
+                            -->
                         </ul>
                         <div class="box" id="write-a-message">
                             <h2>write a message</h2>
@@ -190,18 +496,54 @@
                         </div>
                     </div>
                 </div>
-                <div class="box-container box" id="notifications">
-                    <h1>notifications</h1>
-                    <p class="item">
-                        exampleuser<br/>
-                        room #2<br/>
-                        hello world!<br/>
-                    </p><br/>
-                    <p class="item">
-                        exampleuser<br/>
-                        room #2<br/>
-                        example.jpg<br/>
-                    </p>
+                <div class="sidebar col">
+                    <div class="box-container box" id="catch-up">
+                        <h1>get updates since</h1>
+                        <small>format: 20180824-1824 (YYYYMMDD-HHMM)</small><br />
+                        <br />
+                        <small>get room updates since</small>
+                        <form class="room">
+                            <input type="hidden" name="token" />
+                            <input type="datetime" name="time_since" placeholder="20180824-1824" />
+                            <button type="submit">get</button>
+                        </form>
+
+                        <small>get message updates since</small>
+                        <form class="message">
+                            <input type="hidden" name="token" />
+                            <input type="datetime" name="time_since" placeholder="20180824-1824" />
+                            <button type="submit">get</button>
+                        </form>
+                    </div>
+                    <div class="box-container box" id="init">
+                        <h1>init</h1>
+                        <br />
+                        <p>get room data</p>
+                        <form class="room">
+                            <input type="hidden" name="token" />
+                            <button type="submit">get</button>
+                        </form>
+                        <br />
+                        <hr />
+                        <p>get message data</p>
+                        <form class="message">
+                            <input type="hidden" name="token" />
+                            <button type="submit">get</button>
+                        </form>
+                    </div>
+                    <div class="box-container box grow" id="notifications">
+                        <h1>notifications</h1>
+                        <p class="item">
+                            exampleuser<br/>
+                            room #2<br/>
+                            hello world!<br/>
+                        </p><br/>
+                        <p class="item">
+                            exampleuser<br/>
+                            room #2<br/>
+                            example.jpg<br/>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

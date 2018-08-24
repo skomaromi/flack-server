@@ -13,8 +13,10 @@ class Room(models.Model):
 
 @receiver(m2m_changed, sender=Room.participants.through)
 def validate_room_m2m(sender, instance, action, reverse, model, pk_set, using, *args, **kwargs):
-    print("Room::m2m_changed event triggered")
-    participants_count = instance.participants.count()
+    if action in ['post_add', 'post_remove']:
+        print("m2m_changed for Room")
 
-    if participants_count < 2:
-        raise ValidationError("A room must contain at least 2 participants")
+        participants_count = instance.participants.count()
+
+        if participants_count < 2:
+            raise ValidationError("A room must contain at least 2 participants")

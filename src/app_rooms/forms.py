@@ -16,4 +16,4 @@ class RoomModelForm(forms.ModelForm):
         if participants.count() < 2:
             raise ValidationError("A room must contain at least 2 participants")
 
-        return self.cleaned_data
+        return participants
