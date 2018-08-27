@@ -2,6 +2,7 @@
     <head>
         <title>flack-server | dashboard</title>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/reconnecting-websocket/1.0.0/reconnecting-websocket.min.js"></script>
         <style>
             * {
                 margin: 0;
@@ -69,18 +70,20 @@
                 this.sender = sender
                 this.location = location
                 this.file = file
-                this.time = Date.parse(time)
+                this.time = new Date(time)
             }
 
             $(document).ready(function () {
                 $("#catch-up form *").prop('disabled', true)
                 $("#init form *").prop('disabled', true)
+                $("#write-a-message form *").prop('disabled', true)
 
 
                 // API URLs
                 var apiLoginUrl = '/api/auth/login/'
                 var apiRoomUpdatesUrl = '/api/rooms/'
                 var apiMessageUpdatesUrl = '/api/messages/'
+                var apiFileUploadUrl = '/api/files/upload/'
 
                 var loginMessageUi = $("#login .retrieved-message")
                 var loginTokenUi = $("#login .retrieved-token")
@@ -88,6 +91,7 @@
 
                 var rooms = []
 
+                var wsBaseUrl = "ws://127.0.0.1:8000/"
                 var socket
 
                 var currentRoomId
@@ -126,7 +130,7 @@
                     })
                 })
 
-                $("#catch-up form.room").submit(function (e) {
+                $("#catch-up form").submit(function (e) {
                     e.preventDefault()
 
                     var form = $(this)
@@ -137,28 +141,7 @@
                         form_data: formData
                     })
 
-                    $.ajax({
-                        method: "GET",
-                        url: apiRoomUpdatesUrl,
-                        data: formData,
-                        success: function (d) {
-                            console.log({
-                                result: "success",
-                                response: d
-                            })
-
-                            // once the init is done, we should not need to re-get catch-up data
-                            // $("#catch-up form.room *").prop('disabled', true)
-
-                            addRooms(d)
-                        },
-                        error: function (d) {
-                            console.log({
-                                result: "error",
-                                response: d
-                            })
-                        }
-                    })
+                    console.log("NOT IMPLEMENTED!")
                 })
 
                 $("#init form.room").submit(function (e) {
@@ -241,11 +224,16 @@
                     })
 
                     if (currentRoomId !== clickedRoomId) {
-                        $("#messages").empty()
-                        addMessagesUi(getRoomById(clickedRoomId).messages)
-                        currentRoomId = clickedRoomId
+                        setRoom(clickedRoomId)
                     }
                 })
+
+                function setRoom(roomId) {
+                    $("#messages").empty()
+                    addMessagesUi(getRoomById(roomId).messages)
+                    $("#current-room .name").text("room #" + roomId)
+                    currentRoomId = roomId
+                }
 
                 function getRoomById(_id) {
                     for (var i = 0; i < rooms.length; i++) {
@@ -278,6 +266,7 @@
                         exampleuser: message 1<br/>
                         <small>location: none</small><br/>
                         <small>file: none</small>
+                        <small>time: 2018 Aug 28, 13:28</small>
                     </li>
                     */
                     var locationStr = _message.location?
@@ -297,7 +286,8 @@
                         "<li>"+
                             _message.sender + ": " + _message.content + "<br />" +
                             "<small>location: " + locationStr + "</small><br />" +
-                            "<small>file: " + fileStr + "</small>"+
+                            "<small>file: " + fileStr + "</small><br />" +
+                            "<small>time: " + _message.time + "</small>" +
                         "</li>"
                     )
                 }
@@ -393,7 +383,7 @@
                     }
                 }
 
-                function tokenRetrievedViaLogin() {
+                function tokenRetrievedViaLoginDbg() {
                     // disable login form elements
                     $("#login form *").prop('disabled', true)
 
@@ -407,6 +397,183 @@
                     $("#init form *").prop('disabled', false)
 
                     // open ws here
+                }
+
+                $("#write-a-message form").submit(function (e) {
+                    e.preventDefault()
+
+                    var form = $(this)
+                    var formData = form.serialize()
+
+                    var fileInput = $(this).find("input[type=file]")
+                    var fileInputDom = fileInput[0]
+                    var fileList = fileInputDom.files
+
+                    var wamContent = form.find("input[name=content]").val()
+
+                    var locationObj
+
+                    var wamLatitude = form.find("input[name=latitude]").val()
+                    var wamLongitude = form.find("input[name=longitude]").val()
+
+                    if (wamLatitude !== "" && wamLongitude !== "") {
+                        locationObj = {
+                            latitude: wamLatitude,
+                            longitude: wamLongitude
+                        }
+                    }
+                    else {
+                        locationObj = null
+                    }
+
+                    if (fileList.length !== 0) {
+                        var file = fileList[0]
+
+                        var formData = new FormData()
+                        formData.append('file', file)
+                        formData.append('token', token)
+
+                        $.ajax({
+                            method: "PUT",
+                            url: apiFileUploadUrl,
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function (d) {
+                                console.log({
+                                    result: "success",
+                                    response: d
+                                })
+
+                                var fileId = d.file.id
+
+                                var createMessage = {
+                                    type: "create",
+                                    attr: {
+                                        object: "message",
+                                        content: wamContent,
+                                        file: fileId,
+                                        room: currentRoomId,
+                                        location: locationObj
+                                    }
+                                }
+
+                                socket.send(JSON.stringify(createMessage))
+                            },
+                            error: function (d) {
+                                console.log({
+                                    result: "error",
+                                    response: d
+                                })
+                            }
+                        })
+                    }
+                    else {
+                        var createMessage = {
+                            type: "create",
+                            attr: {
+                                object: "message",
+                                content: wamContent,
+                                file: null,
+                                room: currentRoomId,
+                                location: locationObj
+                            }
+                        }
+
+                        socket.send(JSON.stringify(createMessage))
+                    }
+                })
+
+                function catchUpRooms(_callback) {
+                    $.ajax({
+                        method: "GET",
+                        url: apiRoomUpdatesUrl,
+                        data: {token: token},
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+                            addRooms(d)
+
+                            if (_callback)
+                                _callback()
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                }
+
+                function catchUpMessages(_callback) {
+                    $.ajax({
+                        method: "GET",
+                        url: apiMessageUpdatesUrl,
+                        data: {token: token},
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+                            addMessages(d)
+
+                            if (_callback)
+                                _callback()
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                }
+
+                function tokenRetrievedViaLogin() {
+                    // disable login form elements
+                    $("#login form *").prop('disabled', true)
+
+                    // room and message catch-up
+                    catchUpRooms(catchUpMessages(function () {
+                        // open ws
+                        var wsUrl = wsBaseUrl + token + "/"
+                        socket = new ReconnectingWebSocket(wsUrl)
+                        socket.onmessage = function (e) {
+                            console.log({
+                                wsevent: e
+                            })
+                            handleWsEventData(e.data)
+                        }
+
+                        setRoom(rooms[0].id)
+
+                        // enable wam form
+                        $("#write-a-message form *").prop('disabled', false)
+                    }))
+                }
+
+                function handleWsEventData(d) {
+                    d_ = JSON.parse(d)
+
+                    console.log({
+                        parsedJson: d_
+                    })
+
+                    if (d_.attr.object === 'message') {
+                        addMessage({
+                            room: d_.attr.room,
+
+                            id: d_.attr.message_id,
+                            content: d_.attr.content,
+                            sender: d_.attr.sender,
+                            file: d_.attr.file,
+                            location: d_.attr.location,
+                            time: new Date(d_.attr.time) // this should not be necessary
+                        })
+                    }
                 }
             })
         </script>
@@ -462,35 +629,26 @@
                     </div>
                     <div class="box-container box" id="current-room">
                         <h1>current room</h1>
-                        <p>room name: <span id="room-name">room #2</span></p><br />
+                        <p>room name: <span class="name">room #2</span></p><br />
                         <p>messages:</p>
-                        <ul id="messages">
-                            <!--
-                            <li>
-                                exampleuser: message 1<br/>
-                                <small>location: none</small><br/>
-                                <small>file: none</small>
-                            </li>
-                            <li>
-                                exampleuser: message 2<br/>
-                                <small>location: 55.5832&deg;, 55.5832&deg;</small><br/>
-                                <small>file: none</small>
-                            </li>
-                            <li>
-                                exampleuser: message 3<br/>
-                                <small>location: none</small><br/>
-                                <small>file: <a href="">example.jpg</a></small>
-                            </li>
-                            -->
-                        </ul>
+                        <ul id="messages"></ul>
                         <div class="box" id="write-a-message">
                             <h2>write a message</h2>
                             <form>
-                                <p>sender: exampleuser</p>
-                                <input type="text" placeholder="text" />
-                                <input type="number" placeholder="location.latitude" />
-                                <input type="number" placeholder="location.longitude" />
-                                <span>file: </span><input type="file" placeholder="text" />
+                                <!--
+
+                                _message.id,        - db return
+                                _message.content,   - form value
+                                _message.sender,    - filled by consumer
+                                _message.file,      - form value, but should do route+js
+                                _message.location,  - form value
+                                _message.time       - db return
+
+                                -->
+                                <input type="text" name="content" placeholder="text" />
+                                <input type="number" name="latitude" placeholder="location.latitude" />
+                                <input type="number" name="longitude" placeholder="location.longitude" />
+                                <span>file: </span><input type="file" name="file" placeholder="text" />
                                 <button type="submit">send</button>
                             </form>
                         </div>
@@ -499,19 +657,32 @@
                 <div class="sidebar col">
                     <div class="box-container box" id="catch-up">
                         <h1>get updates since</h1>
-                        <small>format: 20180824-1824 (YYYYMMDD-HHMM)</small><br />
-                        <br />
-                        <small>get room updates since</small>
-                        <form class="room">
+
+                        <p>get room updates since</p>
+                        <small>roomId</small>
+                        <form class="js-updates_room-since_room">
                             <input type="hidden" name="token" />
-                            <input type="datetime" name="time_since" placeholder="20180824-1824" />
+                            <input type="datetime" name="room" placeholder="room id" />
+                            <button type="submit">get</button>
+                        </form>
+                        <small>messageId</small>
+                        <form class="js-updates_room-since_message">
+                            <input type="hidden" name="token" />
+                            <input type="datetime" name="message" placeholder="message id" />
                             <button type="submit">get</button>
                         </form>
 
-                        <small>get message updates since</small>
-                        <form class="message">
+                        <p>get message updates since</p>
+                        <small>roomId</small>
+                        <form class="js-updates_message-since_room">
                             <input type="hidden" name="token" />
-                            <input type="datetime" name="time_since" placeholder="20180824-1824" />
+                            <input type="datetime" name="room" placeholder="room id" />
+                            <button type="submit">get</button>
+                        </form>
+                        <small>messageId</small>
+                        <form class="js-updates_message-since_message">
+                            <input type="hidden" name="token" />
+                            <input type="datetime" name="message" placeholder="message id" />
                             <button type="submit">get</button>
                         </form>
                     </div>

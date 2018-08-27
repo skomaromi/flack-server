@@ -4,6 +4,8 @@ from rest_framework import generics
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ParseError, AuthenticationFailed
 
+from app_messages.models import Message
+
 from ..models import Room
 from .serializers import RoomModelSerializer
 
@@ -15,7 +17,8 @@ class RoomListAPIView(generics.ListAPIView):
     def get_queryset(self, *args, **kwargs):
         qs = self.queryset.none()
         token = self.request.GET.get("token")
-        time_since = self.request.GET.get("time_since")
+        room_since = self.request.GET.get("room")
+        message_since = self.request.GET.get("message")
 
         if token is not None:
             token_objs = Token.objects.filter(key=token)
@@ -27,12 +30,29 @@ class RoomListAPIView(generics.ListAPIView):
 
                 qs = qs.filter(participants=user)
 
-                if time_since is not None:
-                    try:
-                        time_since_parsed = datetime.strptime(time_since, "%Y%m%d-%H%M")
-                    except:
-                        raise ParseError(detail="invalid time_since")
-                    qs = qs.filter(time_created__gte=time_since_parsed)
+                if room_since is not None:
+                    room_objs = Room.objects.filter(pk=room_since)
+
+                    if room_objs.exists():
+                        room_obj = room_objs.first()
+                        time_since = room_obj.time_created
+
+                        qs = qs.filter(time_created__gt=time_since)
+
+                    else:
+                        raise ParseError(detail="invalid room id provided")
+
+                elif message_since is not None:
+                    message_objs = Message.objects.filter(pk=message_since)
+
+                    if message_objs.exists():
+                        message_obj = message_objs.first()
+                        time_since = message_obj.time
+
+                        qs = qs.filter(time_created__gt=time_since)
+
+                    else:
+                        raise ParseError(detail="invalid message id provided")
 
             else:
                 raise AuthenticationFailed(detail="token invalid")

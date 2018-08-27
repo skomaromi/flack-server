@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import AuthenticationFailed
 
 from .serializers import LoginModelSerializer
 
@@ -22,12 +23,7 @@ class LoginAPIView(APIView):
             if user.exists():
                 user = user.first()
             else:
-                return Response({
-                    'r_username': username,
-                    'r_password': password,
-                    'message': 'user does not exist',
-                    'token': None
-                })
+                raise AuthenticationFailed(detail='user does not exist')
 
             if user.check_password(password):
                 token, created = Token.objects.get_or_create(user=user)
@@ -39,14 +35,6 @@ class LoginAPIView(APIView):
                 }
                 return Response(content)
             else:
-                return Response({
-                    'r_username': username,
-                    'r_password': password,
-                    'message': 'invalid username or password',
-                    'token': None
-                })
+                raise AuthenticationFailed(detail='invalid username or password')
         else:
-            return Response({
-                'message': 'username or password not provided',
-                'token': None
-            })
+            raise AuthenticationFailed(detail='username or password not provided')

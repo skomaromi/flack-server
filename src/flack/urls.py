@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/auth/', include('app_auth.api.urls', namespace='auth-api')),
     path('api/rooms/', include('app_rooms.api.urls', namespace='room-api')),
     path('api/messages/', include('app_messages.api.urls', namespace='message-api')),
+    path('api/files/', include('app_files.api.urls', namespace='file-api')),
 ]
