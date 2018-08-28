@@ -30,7 +30,10 @@ class LoginAPIView(APIView):
 
                 content = {
                     'message': 'success',
-                    'user': username,
+                    'user': {
+                        'name': user.username,
+                        'id': user.id
+                    },
                     'token': token.key
                 }
                 return Response(content)

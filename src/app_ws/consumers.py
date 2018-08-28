@@ -15,14 +15,22 @@ class GlobalConsumer(AsyncConsumer):
     async def websocket_connect(self, event):
         self.token = None
         self.user = None
+        self.name = 'flack_notifications'
 
         token = self.scope['url_route']['kwargs']['token']
 
         if await self.check_token_exists(token):
             self.token = token
+
+            await self.channel_layer.group_add(
+                self.name,
+                self.channel_name
+            )
+
             await self.send({
                 'type': 'websocket.accept'
             })
+
         else:
             await self.send({
                 'type': 'websocket.close'
@@ -119,18 +127,20 @@ class GlobalConsumer(AsyncConsumer):
 
                     response_time = message_obj.time
 
+                    response_attr = {
+                        'object': 'message',
+                        'content': content,
+                        'file': response_file,
+                        'room': room,
+                        'sender': self.user.username,
+                        'location': response_location,
+                        'message_id': 7,
+                        'time': str(response_time),
+                    }
+
                     response = {
                         'type': 'response',
-                        'attr': {
-                            'object': 'message',
-                            'content': content,
-                            'file': response_file,
-                            'room': room,
-                            'sender': self.user.username,
-                            'location': response_location,
-                            'message_id': 7,
-                            'time': str(response_time),
-                        }
+                        'attr': response_attr
                     }
                     await self.send({
                         'type': 'websocket.send',
@@ -140,10 +150,28 @@ class GlobalConsumer(AsyncConsumer):
                     #
                     # broadcast message received
                     #
+                    notification_attr = response_attr
 
-                    # TODO: do this
+                    notification = {
+                        'type': 'notification',
+                        'attr': notification_attr
+                    }
+                    await self.channel_layer.group_send(
+                        self.name,
+                        {
+                            'type': 'broadcast',
+                            'text': json.dumps(notification)
+                        }
+                    )
+
                 elif request.get("object") == "room":
                     print("creating a room")
+
+    async def broadcast(self, event):
+        await self.send({
+            'type': 'websocket.send',
+            'text': event['text']
+        })
 
     async def websocket_disconnect(self, event):
         print("disconnected", event)

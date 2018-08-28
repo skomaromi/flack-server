@@ -87,9 +87,12 @@
 
                 var loginMessageUi = $("#login .retrieved-message")
                 var loginTokenUi = $("#login .retrieved-token")
+
+                var username
                 var token
 
                 var rooms = []
+                var roomIds = []
 
                 var wsBaseUrl = "ws://127.0.0.1:8000/"
                 var socket
@@ -115,6 +118,8 @@
                             loginMessageUi.text(d.message)
 
                             if (d.token) {
+                                username = d.user.name
+                                userId = d.user.id
                                 token = d.token
                                 loginTokenUi.text(token)
 
@@ -332,6 +337,8 @@
                     roomObj = new Room(_room.id)
                     rooms.push(roomObj)
 
+                    roomIds.push(_room.id)
+
                     $("#rooms .list").append(
                             "<a href='' data-id='" + _room.id + "'>" +
                                 "room #" + _room.id +
@@ -482,6 +489,8 @@
 
                         socket.send(JSON.stringify(createMessage))
                     }
+
+                    form.find("input").val('')
                 })
 
                 function catchUpRooms(_callback) {
@@ -562,7 +571,38 @@
                         parsedJson: d_
                     })
 
+                    var shouldAddMessage = false
+                    var shouldAddRoom = false
+
+                    // accept:
+                    // * server responses, because they contain complete
+                    //   message/room data for addition on the frontend; and
+                    // * relevant notifications (notification related to a
+                    //   room we're in or are going to be) sent only from
+                    //   other users, because we already have enough data for
+                    //   stuff we sent ourselves
                     if (d_.attr.object === 'message') {
+                        if (d_.type === 'response') { shouldAddMessage = true }
+                        else if (
+                            d_.type === 'notification' &&
+                            d_.attr.sender !== username &&
+                            roomIds.includes(d_.attr.room)
+                        ) {
+                            shouldAddMessage = true
+                        }
+                    }
+                    else if (d_.attr.object === 'room') {
+                        if (d_.type === 'response') { shouldAddRoom = true }
+                        else if (
+                            d_.type === 'notification' &&
+                            d_.attr.sender !== username &&
+                            d_.attr.participants.includes(userId)
+                        ) {
+                            shouldAddRoom = true
+                        }
+                    }
+
+                    if (shouldAddMessage) {
                         addMessage({
                             room: d_.attr.room,
 
@@ -571,8 +611,13 @@
                             sender: d_.attr.sender,
                             file: d_.attr.file,
                             location: d_.attr.location,
-                            time: new Date(d_.attr.time) // this should not be necessary
+                            time: new Date(d_.attr.time)
+                            // new Date() should not be necessary?
                         })
+                    }
+                    else if (shouldAddRoom) {
+                        // TODO: room addition code
+                        console.log("it's a room!")
                     }
                 }
             })
