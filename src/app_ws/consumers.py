@@ -45,36 +45,26 @@ class GlobalConsumer(AsyncConsumer):
 
             #
             # check if request properly structured
-            # a proper message creation request looks like this:
             #
-            #  {
-            #      type: "create",
-            #      attr: {
-            #          object: "message",
-            #          content: "lorem ipsum dolor sit amet",
-            #          file: <null or [1-9][0-9]*>
-            #          room: <any valid room pk/id>,
-            #          location: {
-            #              latitude: <some float>,
-            #              longitude: <some float>
-            #          } <or null>
-            #      }
-            #  }
-
-            # TODO: update room creation request syntax
-            # a proper room creation request looks like this:
-            #
-            #  {
-            #      action: "create"
-            #      object: "room"
-            #      attr: {
-            #          participants: [1, 2, 3]
-            #      }
-            #  }
-            #
-
             if request.get("type") == "create":
                 attr = request.get("attr")
+
+                # a proper message creation request has the following structure:
+                #
+                #  {
+                #      type: "create",
+                #      attr: {
+                #          object: "message",
+                #          content: "lorem ipsum dolor sit amet",
+                #          file: <null or [1-9][0-9]*>
+                #          room: <any valid room pk/id>,
+                #          location: {
+                #              latitude: <some float>,
+                #              longitude: <some float>
+                #          } <or null>
+                #      }
+                #  }
+
                 if attr.get("object") == "message":
                     #
                     # create message in database
@@ -126,6 +116,7 @@ class GlobalConsumer(AsyncConsumer):
                         response_location = None
 
                     response_time = message_obj.time
+                    response_id = message_obj.id
 
                     response_attr = {
                         'object': 'message',
@@ -134,7 +125,7 @@ class GlobalConsumer(AsyncConsumer):
                         'room': room,
                         'sender': self.user.username,
                         'location': response_location,
-                        'message_id': 7,
+                        'message_id': response_id,
                         'time': str(response_time),
                     }
 
@@ -148,7 +139,7 @@ class GlobalConsumer(AsyncConsumer):
                     })
 
                     #
-                    # broadcast message received
+                    # broadcast message creation
                     #
                     notification_attr = response_attr
 
@@ -164,8 +155,75 @@ class GlobalConsumer(AsyncConsumer):
                         }
                     )
 
-                elif request.get("object") == "room":
-                    print("creating a room")
+                # a proper room creation request looks like this:
+                #
+                #  {
+                #      type: "create",
+                #      attr: {
+                #          object: "room",
+                #          name: name,
+                #          participants: participants
+                #      }
+                #  }
+
+                elif attr.get("object") == "room":
+                    #
+                    # create room in database
+                    #
+                    name = attr.get("name")
+                    participants = attr.get("participants")
+
+                    room_obj = await self.create_room(name, participants)
+
+                    #
+                    # respond to sender
+                    #
+                    response_id = room_obj.id
+                    response_attr = {
+                        'object': 'room',
+                        'name': name,
+                        'room_id': response_id
+                    }
+
+                    response = {
+                        'type': 'response',
+                        'attr': response_attr
+                    }
+
+                    await self.send({
+                        'type': 'websocket.send',
+                        'text': json.dumps(response)
+                    })
+
+                    #
+                    # broadcast room creation
+                    #
+                    if self.user is None:
+                        self.user = await self.get_user_from_token()
+
+                    notification_id = response_id
+                    notification_sender = self.user.username
+                    notification_participants = participants
+
+                    notification_attr = {
+                        'object': 'room',
+                        'name': name,
+                        'room_id': notification_id,
+                        'sender': notification_sender,
+                        'participants': notification_participants
+                    }
+
+                    notification = {
+                        'type': 'notification',
+                        'attr': notification_attr
+                    }
+                    await self.channel_layer.group_send(
+                        self.name,
+                        {
+                            'type': 'broadcast',
+                            'text': json.dumps(notification)
+                        }
+                    )
 
     async def broadcast(self, event):
         await self.send({
@@ -200,3 +258,9 @@ class GlobalConsumer(AsyncConsumer):
     @database_sync_to_async
     def create_message(self, content, file, room, sender, location):
         return Message.objects.create(content=content, file=file, room=room, sender=sender, location=location)
+
+    @database_sync_to_async
+    def create_room(self, name, participants):
+        room_obj = Room.objects.create(name=name)
+        room_obj.participants.add(*participants)
+        return room_obj

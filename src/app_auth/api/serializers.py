@@ -11,3 +11,12 @@ class LoginModelSerializer(serializers.ModelSerializer):
             'username',
             'password'
         ]
+
+
+class UserModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'username'
+        ]

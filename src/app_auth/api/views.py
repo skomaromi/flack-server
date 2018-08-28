@@ -1,11 +1,12 @@
 from django.contrib.auth import get_user_model
 
+from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import AuthenticationFailed
 
-from .serializers import LoginModelSerializer
+from .serializers import LoginModelSerializer, UserModelSerializer
 
 User = get_user_model()
 
@@ -41,3 +42,33 @@ class LoginAPIView(APIView):
                 raise AuthenticationFailed(detail='invalid username or password')
         else:
             raise AuthenticationFailed(detail='username or password not provided')
+
+
+class UserListAPIView(generics.ListAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserModelSerializer
+
+    def get_queryset(self, *args, **kwargs):
+        qs = self.queryset.none()
+        token = self.request.GET.get("token")
+        query = self.request.GET.get("q")
+
+        if token is not None:
+            token_objs = Token.objects.filter(key=token)
+
+            if token_objs.exists():
+                qs = self.queryset.all()
+                token_obj = token_objs.first()
+                user_id = token_obj.user.id
+
+                qs = qs.exclude(id=user_id)
+
+                if query is not None:
+                    qs = qs.filter(username__icontains=query)
+
+            else:
+                raise AuthenticationFailed(detail="token invalid")
+        else:
+            raise AuthenticationFailed(detail="token not provided")
+
+        return qs

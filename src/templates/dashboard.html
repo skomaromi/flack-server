@@ -60,9 +60,19 @@
             }
         </style>
         <script>
-            function Room(id, messages) {
+            function Room(id, name) {
                 this.id = id
+                this.name = name
                 this.messages = []
+
+                this.getRoomName = function () {
+                    if (this.name) {
+                        return this.name
+                    }
+                    else {
+                        return "room #" + this.id
+                    }
+                }
             }
             function Message(id, content, sender, file, location, time) {
                 this.id = id
@@ -77,6 +87,7 @@
                 $("#catch-up form *").prop('disabled', true)
                 $("#init form *").prop('disabled', true)
                 $("#write-a-message form *").prop('disabled', true)
+                setMakeRoomInputStateDisabled(true)
 
 
                 // API URLs
@@ -84,6 +95,7 @@
                 var apiRoomUpdatesUrl = '/api/rooms/'
                 var apiMessageUpdatesUrl = '/api/messages/'
                 var apiFileUploadUrl = '/api/files/upload/'
+                var apiUserListUrl = '/api/auth/users/'
 
                 var loginMessageUi = $("#login .retrieved-message")
                 var loginTokenUi = $("#login .retrieved-token")
@@ -235,8 +247,10 @@
 
                 function setRoom(roomId) {
                     $("#messages").empty()
-                    addMessagesUi(getRoomById(roomId).messages)
-                    $("#current-room .name").text("room #" + roomId)
+
+                    var roomObj = getRoomById(roomId)
+                    addMessagesUi(roomObj.messages)
+                    $("#current-room .name").text(roomObj.getRoomName())
                     currentRoomId = roomId
                 }
 
@@ -334,14 +348,15 @@
                 }
 
                 function addRoom(_room) {
-                    roomObj = new Room(_room.id)
+                    var roomObj = new Room(_room.id, _room.name)
+
                     rooms.push(roomObj)
 
                     roomIds.push(_room.id)
 
                     $("#rooms .list").append(
-                            "<a href='' data-id='" + _room.id + "'>" +
-                                "room #" + _room.id +
+                            "<a href='' data-id='" + roomObj.id + "'>" +
+                                roomObj.getRoomName() +
                             "</a><br />"
                     )
                 }
@@ -561,7 +576,148 @@
 
                         // enable wam form
                         $("#write-a-message form *").prop('disabled', false)
+
+                        initializeMakeRoomForm()
                     }))
+                }
+
+                $("#make-a-room form").submit(function (e) {
+                    e.preventDefault()
+                    var form = $(this)
+
+                    var participantsVal = form.find("select").val()
+                    var participants = []
+
+                    // javascript collects values as strings. but we need them
+                    // as ints.
+                    for (var i = 0; i < participantsVal.length; i++) {
+                        participants.push(parseInt(participantsVal[i]))
+                    }
+
+                    // it doesn't make much sense to make a room which doesn't
+                    // the user who's creating it
+                    participants.push(userId)
+
+                    // sort just because it'll otherwise go through the
+                    // application unsorted
+                    participants.sort()
+
+                    var nameVal = form.find("input[name=name]").val()
+                    var name = nameVal.length > 0 ? nameVal : null
+
+                    var data
+                    if (name) {
+                        data = {
+                            token: token,
+                            participants: participants,
+                            name: name
+                        }
+                    }
+                    else {
+                        data = {
+                            token: token,
+                            participants: participants
+                        }
+                    }
+
+                    var createRoom = {
+                        type: "create",
+                        attr: {
+                            object: "room",
+                            name: name,
+                            participants: participants
+                        }
+                    }
+
+                    socket.send(JSON.stringify(createRoom))
+
+                    // flush make-a-room inputs
+                    form.find("input[name=name]").val('')
+                    form.find("input[name=user-filter]").val('')
+                    form.find("select").val('')
+                })
+
+                function initializeMakeRoomForm() {
+                    // fetch all users
+                    populateMakeRoomUserList()
+
+
+                    console.log("reached initializeMakeRoomForm")
+
+                    setMakeRoomInputStateDisabled(false)
+                }
+
+                $("#make-a-room input[name=user-filter]").keyup(function (e) {
+                    query = $(this).val()
+
+                    populateMakeRoomUserList(query)
+                })
+
+                $("#make-a-room select").on("change", function (e) {
+                    validateMakeRoomForm()
+                })
+
+                function validateMakeRoomForm() {
+                    var selectedValues = $("#make-a-room select").val()
+
+                    if (selectedValues.length < 1) {
+                        $("#make-a-room form button").prop('disabled', true)
+                    }
+                    else {
+                        $("#make-a-room form button").prop('disabled', false)
+                    }
+                }
+
+                function populateMakeRoomUserList(query) {
+                    if (query) {
+                        data = {
+                            token: token,
+                            q: query
+                        }
+                    }
+                    else {
+                        data = {token: token}
+                    }
+
+                    $.ajax({
+                        method: "GET",
+                        url: apiUserListUrl,
+                        data: data,
+                        success: function (d) {
+                            console.log({
+                                fun: "populateMakeRoomUserList",
+                                result: "success",
+                                response: d
+                            })
+
+                            var marSelect = $("#make-a-room select")
+                            marSelect.empty()
+
+                            var users = d
+
+                            /*
+                            <option value="3">exampleuser</option>
+                            <option value="3">exampleuser</option>
+                            <option value="3">exampleuser</option>
+                            */
+                            for (var i = 0; i < users.length; i++) {
+                                marSelect.append(
+                                    "<option value='"+users[i].id+"'>"+
+                                        users[i].username+
+                                    "</option>"
+                                )
+                            }
+
+                            validateMakeRoomForm()
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+
+                    })
                 }
 
                 function handleWsEventData(d) {
@@ -616,9 +772,15 @@
                         })
                     }
                     else if (shouldAddRoom) {
-                        // TODO: room addition code
-                        console.log("it's a room!")
+                        addRoom({
+                            id: d_.attr.room_id,
+                            name: d_.attr.name
+                        })
                     }
+                }
+
+                function setMakeRoomInputStateDisabled(state) {
+                    $("#make-a-room form *, #make-a-room input").prop('disabled', state)
                 }
             })
         </script>
@@ -660,14 +822,10 @@
                         <div class="box" id="make-a-room">
                             <h2>make a room</h2>
                             <form>
-                                <p>room participants</p>
-                                <input type="text" placeholder="filter..." />
-                                <br/>
-                                <select size="3">
-                                    <option>exampleuser</option>
-                                    <option>exampleuser</option>
-                                    <option>exampleuser</option>
-                                </select><br/>
+                                <input type="text" name="name" placeholder="room name"/><br />
+                                <small>room participants</small>
+                                <input type="text" name="user-filter" placeholder="filter..." />
+                                <select size="10" name="participants" multiple></select>
                                 <button type="submit">make</button>
                             </form>
                         </div>
