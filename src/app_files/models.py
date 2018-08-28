@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 
-from ipfs_storage import InterPlanetaryFileSystemStorage
+from .storage.ipfs_storage import InterPlanetaryFileSystemStorage
 
 
 class File(models.Model):

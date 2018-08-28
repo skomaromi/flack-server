@@ -1,3 +1,12 @@
+"""
+           Name: django-ipfs-storage
+Original author: Ben Jeffrey (@jeffbr13, https://github.com/jeffbr13)
+        License: Mozilla Public License 2.0 (see LICENSE)
+            URL: https://github.com/jeffbr13/django-ipfs-storage
+         Commit: 7301ef22cd343deed533ed4ecca3c16acdcfc9ea
+"""
+
+
 from urllib.parse import urlparse
 
 from django.conf import settings
@@ -51,9 +60,15 @@ class InterPlanetaryFileSystemStorage(Storage):
         :param content: Django File instance to save.
         :return: IPFS Content ID multihash.
         """
-        multihash = self._ipfs_client.add_bytes(content.__iter__())
-        self._ipfs_client.pin_add(multihash)
-        return multihash
+        file = self._ipfs_client.add(content, wrap_with_directory=True)
+
+        if len(file) == 2:
+            file_wrapped = file[1]
+            file_hash = file_wrapped.get('Hash')
+            self._ipfs_client.pin_add(file_hash)
+            return file_hash
+        else:
+            raise IOError("An error occurred while uploading the file to IPFS.")
 
     def get_valid_name(self, name):
         """Returns name. Only provided for compatibility with Storage interface."""
@@ -79,4 +94,8 @@ class InterPlanetaryFileSystemStorage(Storage):
         :param name: IPFS Content ID multihash.
         :return: HTTP URL to access the content via an IPFS HTTP Gateway.
         """
-        return '{gateway_url}{multihash}'.format(gateway_url=self.gateway_url, multihash=name)
+        obj_list = self._ipfs_client.ls(name)
+
+        filename = obj_list.get('Objects')[0].get('Links')[0].get('Name')
+
+        return '{gateway_url}{multihash}/{filename}'.format(gateway_url=self.gateway_url, multihash=name, filename=filename)
