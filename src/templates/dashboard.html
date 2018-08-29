@@ -50,13 +50,21 @@
                 list-style-type: none;
                 margin-bottom: 15px
             }
-
             #messages li {
                 margin-bottom: 15px
             }
             .sidebar {
                 float: right;
                 width: 300px;
+                word-wrap: break-word;
+            }
+            #files .reload {
+                color: blue;
+                text-decoration: none;
+                float: right;
+            }
+            #files ul {
+                list-style-type: none;
             }
         </style>
         <script>
@@ -95,6 +103,7 @@
                 var apiRoomUpdatesUrl = '/api/rooms/'
                 var apiMessageUpdatesUrl = '/api/messages/'
                 var apiFileUploadUrl = '/api/files/upload/'
+                var apiFileListUrl = '/api/files/'
                 var apiUserListUrl = '/api/auth/users/'
 
                 var loginMessageUi = $("#login .retrieved-message")
@@ -106,7 +115,15 @@
                 var rooms = []
                 var roomIds = []
 
-                var wsBaseUrl = "ws://127.0.0.1:8000/"
+                var wsHost
+                if (window.location.host) {
+                    wsHost = window.location.host
+                }
+                else {
+                    wsHost = '127.0.0.1:8000'
+                }
+
+                var wsBaseUrl = "ws://" + wsHost + "/"
                 var socket
 
                 var currentRoomId
@@ -578,7 +595,60 @@
                         $("#write-a-message form *").prop('disabled', false)
 
                         initializeMakeRoomForm()
+
+                        initializeFiles()
                     }))
+                }
+
+                $("#files .reload").click(function (e) {
+                    e.preventDefault()
+
+                    initializeFiles()
+                })
+
+                function initializeFiles() {
+                    var files = $("#files ul")
+                    $.ajax({
+                        method: "GET",
+                        url: apiFileListUrl,
+                        data: {token: token},
+                        success: function (d) {
+                            console.log({
+                                func: "initializeFiles",
+                                result: "success",
+                                response: d
+                            })
+
+                            files.empty()
+
+                            for (var i = 0; i < d.length; i++) {
+                                files.append(
+                                    "<li>" +
+                                        "<small>" +
+                                            "<a href='" + d[i].shareable_url + "'>" +
+                                                d[i].name +
+                                            "</a>" +
+                                            " | "+
+                                            "<a href='"+d[i].localnode_url+"'>(fastdl)</a>"+
+                                        "</small><br />" +
+                                        "<small>" +
+                                            d[i].size +
+                                        "</small><br />" +
+                                        "<small><code>" +
+                                            d[i].hash +
+                                        "</code></small><br />" +
+                                    "</li><br />"
+                                )
+                            }
+                        },
+                        error: function (d) {
+                            console.log({
+                                func: "initializeFiles",
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
                 }
 
                 $("#make-a-room form").submit(function (e) {
@@ -904,6 +974,10 @@
                             <input type="hidden" name="token" />
                             <button type="submit">get</button>
                         </form>
+                    </div>
+                    <div class="box-container box" id="files">
+                        <h1>my files <a class="reload" href="">&#8634;</a></h1>
+                        <ul></ul>
                     </div>
                     <div class="box-container box grow" id="notifications">
                         <h1>notifications</h1>
