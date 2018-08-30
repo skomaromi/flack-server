@@ -36,6 +36,9 @@ class FileModelSerializer(serializers.ModelSerializer):
                 if addr != '127.0.0.1':
                     local_ip = addr
 
+        if local_ip is None:
+            local_ip = '127.0.0.1'
+
         return 'http://{local_ip}:8080/ipfs/{multihash}/{filename}'.format(
             local_ip=local_ip, multihash=obj.file.name, filename=obj.name
         )

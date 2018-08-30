@@ -48,7 +48,9 @@
                 padding: 10px;
                 background-color: #fff;
                 list-style-type: none;
-                margin-bottom: 15px
+                margin-bottom: 15px;
+                max-height: 500px;
+                overflow-y: scroll;
             }
             #messages li {
                 margin-bottom: 15px
@@ -94,20 +96,25 @@
             $(document).ready(function () {
                 $("#catch-up form *").prop('disabled', true)
                 $("#init form *").prop('disabled', true)
-                $("#write-a-message form *").prop('disabled', true)
+                $("#current-room").hide()
                 setMakeRoomInputStateDisabled(true)
-
+                validateRegisterFields()
 
                 // API URLs
                 var apiLoginUrl = '/api/auth/login/'
+                var apiRegisterUrl = '/api/auth/register/'
+                var apiUserExistsUrl = '/api/auth/user-exists/'
                 var apiRoomUpdatesUrl = '/api/rooms/'
                 var apiMessageUpdatesUrl = '/api/messages/'
                 var apiFileUploadUrl = '/api/files/upload/'
                 var apiFileListUrl = '/api/files/'
                 var apiUserListUrl = '/api/auth/users/'
 
-                var loginMessageUi = $("#login .retrieved-message")
-                var loginTokenUi = $("#login .retrieved-token")
+                var loginMessageUi = $("#login .message")
+                var registerMessageUi = $("#register .message")
+
+                var authUsernameUi = $("#auth .username")
+                var authTokenUi = $("#auth .token")
 
                 var username
                 var token
@@ -140,6 +147,7 @@
                         data: formData,
                         success: function (d) {
                             console.log({
+                                sender: "#login form | submit",
                                 result: "success",
                                 response: d
                             })
@@ -150,7 +158,9 @@
                                 username = d.user.name
                                 userId = d.user.id
                                 token = d.token
-                                loginTokenUi.text(token)
+
+                                authUsernameUi.text(username)
+                                authTokenUi.text(token)
 
                                 tokenRetrievedViaLogin()
                             }
@@ -160,9 +170,136 @@
                                 result: "error",
                                 response: d
                             })
+
+                            loginMessageUi.text(d.responseJSON.detail)
                         }
                     })
                 })
+
+                $("#register form").submit(function (e) {
+                    e.preventDefault()
+
+                    var form = $(this)
+                    var formData = form.serialize()
+
+                    $.ajax({
+                        method: "POST",
+                        url: apiRegisterUrl,
+                        data: formData,
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+
+                            registerMessageUi.text(d.message)
+
+                            if (d.token) {
+                                username = d.user.name
+                                userId = d.user.id
+                                token = d.token
+
+                                authUsernameUi.text(username)
+                                authTokenUi.text(token)
+
+                                tokenRetrievedViaRegister()
+                            }
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+
+                            registerMessageUi.text(d.responseJSON.detail)
+                        }
+                    })
+                })
+                
+                $("#register input").keyup(function (e) {
+                    validateRegisterFields()
+                })
+
+                function validateRegisterFields() {
+                    var usernameValid = validateUsername()
+                    var passwordValid = validatePassword()
+                    var inputsValid = usernameValid && passwordValid
+                    var shouldDisable = !inputsValid
+
+                    var registerUsernameErrorUi = $("#register .username-error")
+
+                    if (inputsValid) {
+                        registerUsernameErrorUi.text("[usr](...) validating username")
+                        checkUsernameAvailable()
+                    }
+                    else {
+                        $("#register button").prop('disabled', shouldDisable)
+                    }
+                }
+
+                function checkUsernameAvailable() {
+                    var registerUsernameErrorUi = $("#register .username-error")
+                    var usernameVal = $("#register input[name=username").val()
+
+                    $.ajax({
+                        method: "GET",
+                        url: apiUserExistsUrl,
+                        data: {username: usernameVal},
+                        success: function (d) {
+                            console.log({
+                                result: "success",
+                                response: d
+                            })
+
+                            var exists = d.exists
+                            var shouldDisable = true
+                            
+                            if (exists) {
+                                registerUsernameErrorUi.text("[usr](err) username '"+usernameVal+"' is taken")
+                                shouldDisable = true
+                            }
+                            else {
+                                registerUsernameErrorUi.text("[usr](ok) username '"+usernameVal+"' is available!")
+                                shouldDisable = false
+                            }
+                            $("#register button").prop('disabled', shouldDisable)
+                        },
+                        error: function (d) {
+                            console.log({
+                                result: "error",
+                                response: d
+                            })
+                        }
+                    })
+                }
+                
+                function validateUsername() {
+                    var registerUsernameErrorUi = $("#register .username-error")
+                    var usernameVal = $("#register input[name=username").val()
+
+                    if (usernameVal.length === 0) {
+                        registerUsernameErrorUi.text("[usr](err) username cannot be empty")
+                        return false
+                    }
+                    else {
+                        registerUsernameErrorUi.text("[usr](...) to check username availability, please enter password")
+                        return true
+                    }
+                }
+
+                function validatePassword() {
+                    var registerPasswordErrorUi = $("#register .password-error")
+                    var passwordVal = $("#register input[name=password").val()
+
+                    if (passwordVal.length < 6) {
+                        registerPasswordErrorUi.text("[pwd](err) password must be at least 6 characters long")
+                        return false
+                    }
+                    else {
+                        registerPasswordErrorUi.text("[pwd](ok)")
+                        return true
+                    }
+                }
 
                 $("#catch-up form").submit(function (e) {
                     e.preventDefault()
@@ -269,6 +406,8 @@
                     addMessagesUi(roomObj.messages)
                     $("#current-room .name").text(roomObj.getRoomName())
                     currentRoomId = roomId
+
+                    $("#current-room").show()
                 }
 
                 function getRoomById(_id) {
@@ -336,6 +475,7 @@
 
                 function addRooms(_rooms) {
                     console.log({
+                        sender: "addRooms()",
                         arg: _rooms
                     })
                     for (var i = 0; i < _rooms.length; i++) {
@@ -379,15 +519,13 @@
                 }
 
                 function addMessages(_messages) {
-                    console.log({
-                        func: 'addMessages',
-                        arg: _messages
-                    })
                     for (var i = 0; i < _messages.length; i++) {
                         addMessage(_messages[i])
                     }
 
                     console.log({
+                        sender: 'addMessages()',
+                        arg: _messages,
                         rooms_after_adding: rooms
                     })
                 }
@@ -532,13 +670,13 @@
                         data: {token: token},
                         success: function (d) {
                             console.log({
+                                sender: "catchUpRooms()",
                                 result: "success",
                                 response: d
                             })
                             addRooms(d)
 
-                            if (_callback)
-                                _callback()
+                            catchUpMessages(_callback)
                         },
                         error: function (d) {
                             console.log({
@@ -556,6 +694,7 @@
                         data: {token: token},
                         success: function (d) {
                             console.log({
+                                sender: "catchUpMessages()",
                                 result: "success",
                                 response: d
                             })
@@ -573,12 +712,31 @@
                     })
                 }
 
+                function tokenRetrievedViaRegister() {
+                    // hide login and register forms
+                    $("#login").hide()
+                    $("#register").hide()
+
+                    // open ws
+                    var wsUrl = wsBaseUrl + token + "/"
+                    socket = new ReconnectingWebSocket(wsUrl)
+                    socket.onmessage = function (e) {
+                        console.log({
+                            wsevent: e
+                        })
+                        handleWsEventData(e.data)
+                    }
+
+                    initializeMakeRoomForm()
+                }
+
                 function tokenRetrievedViaLogin() {
-                    // disable login form elements
-                    $("#login form *").prop('disabled', true)
+                    // hide login and register forms
+                    $("#login").hide()
+                    $("#register").hide()
 
                     // room and message catch-up
-                    catchUpRooms(catchUpMessages(function () {
+                    catchUpRooms(function () {
                         // open ws
                         var wsUrl = wsBaseUrl + token + "/"
                         socket = new ReconnectingWebSocket(wsUrl)
@@ -588,16 +746,15 @@
                             })
                             handleWsEventData(e.data)
                         }
-
-                        setRoom(rooms[0].id)
-
-                        // enable wam form
-                        $("#write-a-message form *").prop('disabled', false)
+                        
+                        if (rooms.length > 0) {
+                            setRoom(rooms[0].id)
+                        }
 
                         initializeMakeRoomForm()
 
                         initializeFiles()
-                    }))
+                    })
                 }
 
                 $("#files .reload").click(function (e) {
@@ -710,7 +867,6 @@
                 function initializeMakeRoomForm() {
                     // fetch all users
                     populateMakeRoomUserList()
-
 
                     console.log("reached initializeMakeRoomForm")
 
@@ -864,18 +1020,19 @@
                 <input type="text" name="password" placeholder="password"/>
                 <button type="submit">login</button>
             </form>
-            <small>message: <span class="retrieved-message">None</span></small><br/>
-            <small>token: <span class="retrieved-token">None</span></small>
+            <small>: <span class="message"></span></small>
         </div>
         <div class="box-container box" id="register">
             <h1>register</h1>
-            <small>user check and make using drf</small>
+            <small>user check and make using drf</small><br><br>
+            <small>: <span class="username-error"></span></small><br>
+            <small>: <span class="password-error"></span></small>
             <form>
-                <input type="text" placeholder="username"/>
-                <input type="text" placeholder="password"/>
-                <input type="text" placeholder="confirm password"/>
+                <input type="text" name="username" placeholder="username"/>
+                <input type="text" name="password" placeholder="password"/>
                 <button type="submit">register</button>
             </form>
+
         </div>
         <div id="dashboard">
             <div class="row">
@@ -928,6 +1085,19 @@
                     </div>
                 </div>
                 <div class="sidebar col">
+                    <div class="box-container box" id="auth">
+                        <h1>auth data</h1>
+                        <p>
+                            <small>
+                                username: <span class="username">None</span>
+                            </small>
+                        </p>
+                        <p>
+                            <small>
+                                token: <span class="token">None</span>
+                            </small>
+                        </p>
+                    </div>
                     <div class="box-container box" id="catch-up">
                         <h1>get updates since</h1>
 
