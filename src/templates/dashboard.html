@@ -336,8 +336,9 @@
                                 response: d
                             })
 
-                            // once the init is done, we should not need to re-get room data
-                            // $("#init form.room *").prop('disabled', true)
+                            // once init is done, re-getting room data should 
+                            // not be necessary (or doable)
+                            $("#init form.room *").prop('disabled', true)
 
                             addRooms(d)
                         },
@@ -371,8 +372,9 @@
                                 response: d
                             })
 
-                            // once the init is done, we should not need to re-get message data
-                            // $("#init form.message *").prop('disabled', true)
+                            // once init is done, re-getting message data 
+                            // should not be necessary
+                            $("#init form.message *").prop('disabled', true)
 
                             addMessages(d)
                         },
@@ -1100,7 +1102,7 @@
                     </div>
                     <div class="box-container box" id="catch-up">
                         <h1>get updates since</h1>
-
+                        <p><small><b>not implemented!</b></small></p><br>
                         <p>get room updates since</p>
                         <small>roomId</small>
                         <form class="js-updates_room-since_room">
@@ -1151,6 +1153,7 @@
                     </div>
                     <div class="box-container box grow" id="notifications">
                         <h1>notifications</h1>
+                        <p><small><b>not implemented!</b></small></p><br>
                         <p class="item">
                             exampleuser<br/>
                             room #2<br/>
