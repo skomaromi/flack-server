@@ -91,6 +91,14 @@ class UserExistsAPIView(APIView):
         return Response(content)
 
 
+class PingAPIView(APIView):
+    def get(self, request):
+        content = {
+            'text': 'flack-pong'
+        }
+        return Response(content)
+
+
 class UserListAPIView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserModelSerializer
