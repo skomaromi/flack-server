@@ -117,6 +117,7 @@
                 var authTokenUi = $("#auth .token")
 
                 var username
+                var sender_unique
                 var token
 
                 var rooms = []
@@ -156,6 +157,7 @@
 
                             if (d.token) {
                                 username = d.user.name
+                                sender_unique = username + "_" + randomNChars(4)
                                 userId = d.user.id
                                 token = d.token
 
@@ -196,6 +198,7 @@
 
                             if (d.token) {
                                 username = d.user.name
+                                sender_unique = username + "_" + randomNChars(4)
                                 userId = d.user.id
                                 token = d.token
 
@@ -215,6 +218,12 @@
                         }
                     })
                 })
+
+                function randomNChars(n) {
+                    // source: https://stackoverflow.com/q/1349404
+                    // posted by @doubletap, improved by @Antoine Pinsard
+                    return Math.random().toString(36).slice(-n)
+                }
                 
                 $("#register input").keyup(function (e) {
                     validateRegisterFields()
@@ -608,6 +617,11 @@
                     if (fileList.length !== 0) {
                         var file = fileList[0]
 
+                        console.log({
+                            sender: "write-a-message | hasFile",
+                            file: file
+                        })
+
                         var formData = new FormData()
                         formData.append('file', file)
                         formData.append('token', token)
@@ -630,6 +644,7 @@
                                     type: "create",
                                     attr: {
                                         object: "message",
+                                        sender_unique: sender_unique,
                                         content: wamContent,
                                         file: fileId,
                                         room: currentRoomId,
@@ -652,6 +667,7 @@
                             type: "create",
                             attr: {
                                 object: "message",
+                                sender_unique: sender_unique,
                                 content: wamContent,
                                 file: null,
                                 room: currentRoomId,
@@ -738,9 +754,10 @@
                     $("#register").hide()
 
                     // room and message catch-up
+                    /*
                     catchUpRooms(function () {
                         // open ws
-                        var wsUrl = wsBaseUrl + token + "/"
+                        var wsUrl = wsBaseUrl + token + "/-1/-1/"
                         socket = new ReconnectingWebSocket(wsUrl)
                         socket.onmessage = function (e) {
                             console.log({
@@ -757,6 +774,21 @@
 
                         initializeFiles()
                     })
+                    */
+
+                    // open ws
+                    var wsUrl = wsBaseUrl + token + "/-1/-1/"
+                    socket = new ReconnectingWebSocket(wsUrl)
+                    socket.onmessage = function (e) {
+                        console.log({
+                            wsevent: e
+                        })
+                        handleWsEventData(e.data)
+                    }
+
+                    initializeMakeRoomForm()
+
+                    initializeFiles()
                 }
 
                 $("#files .reload").click(function (e) {
@@ -853,6 +885,7 @@
                         type: "create",
                         attr: {
                             object: "room",
+                            sender_unique: sender_unique,
                             name: name,
                             participants: participants
                         }
@@ -969,7 +1002,7 @@
                         if (d_.type === 'response') { shouldAddMessage = true }
                         else if (
                             d_.type === 'notification' &&
-                            d_.attr.sender !== username &&
+                            d_.attr.sender_unique !== sender_unique &&
                             roomIds.includes(d_.attr.room)
                         ) {
                             shouldAddMessage = true
@@ -979,7 +1012,7 @@
                         if (d_.type === 'response') { shouldAddRoom = true }
                         else if (
                             d_.type === 'notification' &&
-                            d_.attr.sender !== username &&
+                            d_.attr.sender_unique !== sender_unique &&
                             d_.attr.participants.includes(userId)
                         ) {
                             shouldAddRoom = true
@@ -987,9 +1020,12 @@
                     }
 
                     if (shouldAddMessage) {
+                        console.log({
+                            sender: "handleWsEventData()",
+                            result: "shouldAddMessage = true"
+                        })
                         addMessage({
                             room: d_.attr.room,
-
                             id: d_.attr.message_id,
                             content: d_.attr.content,
                             sender: d_.attr.sender,
@@ -1000,8 +1036,12 @@
                         })
                     }
                     else if (shouldAddRoom) {
+                        console.log({
+                            sender: "handleWsEventData()",
+                            result: "shouldAddRoom = true"
+                        })
                         addRoom({
-                            id: d_.attr.room_id,
+                            id: d_.attr.id,
                             name: d_.attr.name
                         })
                     }

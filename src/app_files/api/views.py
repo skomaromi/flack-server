@@ -1,3 +1,5 @@
+import humanize
+
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -27,8 +29,10 @@ class UploadAPIView(APIView):
                 content = {
                     'message': 'success',
                     'file': {
-                        'url': file.file.url,
                         'name': file.name,
+                        'hash': file.file.name,
+                        'size': humanize.naturalsize(file.file.size),
+                        'url': file.file.url,
                         'id': file.id
                     }
                 }

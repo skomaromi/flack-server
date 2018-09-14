@@ -7,7 +7,8 @@ from django.core.exceptions import ValidationError
 
 class Room(models.Model):
     participants = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='rooms')
-    name = models.CharField(max_length=255, null=True, blank=True)
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
     time_created = models.DateTimeField(auto_now_add=True)
 
 

@@ -121,6 +121,8 @@ class UserListAPIView(generics.ListAPIView):
                 if query is not None:
                     qs = qs.filter(username__icontains=query)
 
+                qs = qs.order_by('username')
+
             else:
                 raise AuthenticationFailed(detail="token invalid")
         else:
