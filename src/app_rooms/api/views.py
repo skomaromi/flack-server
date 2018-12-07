@@ -11,6 +11,11 @@ from .serializers import RoomModelSerializer
 
 
 class RoomListAPIView(generics.ListAPIView):
+    """
+    **DEPRECATED**
+
+    Room list API endpoint. Updates are delivered via WS, so this endpoint should **not** be used.
+    """
     queryset = Room.objects.all()
     serializer_class = RoomModelSerializer
 

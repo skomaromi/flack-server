@@ -1,3 +1,6 @@
+import coreapi
+import coreschema
+
 from django.contrib.auth import get_user_model
 
 from rest_framework import generics
@@ -5,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import AuthenticationFailed, ParseError
+from rest_framework.schemas import AutoSchema
 
 from .serializers import UserModelSerializer
 
@@ -12,6 +16,21 @@ User = get_user_model()
 
 
 class LoginAPIView(APIView):
+    schema = AutoSchema(
+        manual_fields=[
+            coreapi.Field(
+                name="username",
+                required=True,
+                location="form"
+            ),
+            coreapi.Field(
+                name="password",
+                required=True,
+                location="form"
+            )
+        ]
+    )
+
     def post(self, request, format=None):
         username = request.POST.get('username', None)
         password = request.POST.get('password', None)
@@ -43,6 +62,27 @@ class LoginAPIView(APIView):
 
 
 class RegisterAPIView(APIView):
+    schema = AutoSchema(
+        manual_fields=[
+            coreapi.Field(
+                name="username",
+                required=True,
+                location="form",
+                schema=coreschema.String(
+                    description="Username. Should be unique."
+                )
+            ),
+            coreapi.Field(
+                name="password",
+                required=True,
+                location="form",
+                schema=coreschema.String(
+                    description="Password. Should be at least 6 characters long."
+                )
+            )
+        ]
+    )
+
     def post(self, request, format=None):
         username = request.POST.get('username', None)
         password = request.POST.get('password', None)
@@ -76,6 +116,16 @@ class RegisterAPIView(APIView):
 
 
 class UserExistsAPIView(APIView):
+    # Swagger API bureaucracy
+    schema = AutoSchema(
+        manual_fields=[
+            coreapi.Field(
+                name="username",
+                required=True
+            )
+        ]
+    )
+
     def get(self, request):
         username = request.GET.get('username', None)
 
@@ -102,6 +152,24 @@ class PingAPIView(APIView):
 class UserListAPIView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserModelSerializer
+
+    schema = AutoSchema(
+        manual_fields=[
+            coreapi.Field(
+                name="token",
+                required=True,
+                schema=coreschema.String(
+                    description="Token. Used to authenticate request provider exclude them from results."
+                )
+            ),
+            coreapi.Field(
+                name="q",
+                schema=coreschema.String(
+                    description="Query. If not empty, returns only users which contain given string."
+                )
+            )
+        ]
+    )
 
     def get_queryset(self, *args, **kwargs):
         qs = self.queryset.none()

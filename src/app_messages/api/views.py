@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from rest_framework import generics
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import ParseError, AuthenticationFailed
@@ -11,6 +9,11 @@ from .serializers import MessageModelSerializer
 
 
 class MessageListAPIView(generics.ListAPIView):
+    """
+    **DEPRECATED**
+
+    Message list API endpoint. Updates are delivered via WS, so this endpoint should **not** be used.
+    """
     queryset = Message.objects.all()
     serializer_class = MessageModelSerializer
 
