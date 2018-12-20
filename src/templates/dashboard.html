@@ -735,15 +735,7 @@
                     $("#login").hide()
                     $("#register").hide()
 
-                    // open ws
-                    var wsUrl = wsBaseUrl + token + "/"
-                    socket = new ReconnectingWebSocket(wsUrl)
-                    socket.onmessage = function (e) {
-                        console.log({
-                            wsevent: e
-                        })
-                        handleWsEventData(e.data)
-                    }
+                    openWs()
 
                     initializeMakeRoomForm()
                 }
@@ -776,7 +768,14 @@
                     })
                     */
 
-                    // open ws
+                    openWs()
+
+                    initializeMakeRoomForm()
+
+                    initializeFiles()
+                }
+
+                function openWs() {
                     var wsUrl = wsBaseUrl + token + "/-1/-1/"
                     socket = new ReconnectingWebSocket(wsUrl)
                     socket.onmessage = function (e) {
@@ -785,10 +784,6 @@
                         })
                         handleWsEventData(e.data)
                     }
-
-                    initializeMakeRoomForm()
-
-                    initializeFiles()
                 }
 
                 $("#files .reload").click(function (e) {
