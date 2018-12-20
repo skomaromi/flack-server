@@ -40,7 +40,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework.authtoken',
-    'rest_framework_swagger',
+    'drf_yasg',
 
     'channels',
 
@@ -140,15 +140,4 @@ CHANNEL_LAYERS = {
             "hosts": [("localhost", 6379)]
         },
     },
-}
-
-# by default only JSONParser is available
-# credits to m-haziq for this one:
-# https://github.com/m-haziq/django-rest-swagger-docs
-REST_FRAMEWORK = {
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.FormParser',
-        'rest_framework.parsers.MultiPartParser',
-        'rest_framework.parsers.JSONParser',
-    ]
 }

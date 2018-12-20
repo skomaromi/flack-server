@@ -1,43 +1,91 @@
-import coreapi
-import coreschema
 import humanize
+
+from django.utils.decorators import method_decorator
 
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework.exceptions import AuthenticationFailed
-from rest_framework.schemas import AutoSchema
+
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 from ..models import File
 from .serializers import FileModelSerializer
 
 
 class UploadAPIView(APIView):
-    schema = AutoSchema(
-        manual_fields=[
-            coreapi.Field(
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
                 name="token",
-                required=True,
-                location="form",
-                schema=coreschema.String(
-                    description="Token. Used to associate the uploaded file with its owner."
+                in_=openapi.IN_FORM,
+                description="Token. Used to associate the uploaded file with its owner.",
+                type=openapi.TYPE_STRING,
+                required=True
+            ),
+            openapi.Parameter(
+                name="file",
+                in_=openapi.IN_FORM,
+                type=openapi.TYPE_FILE,
+                required=True
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description='',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'message': openapi.Schema(
+                            description="Request status. The only value that is currently returned is 'success'.",
+                            type=openapi.TYPE_STRING,
+                            example='success'
+                        ),
+                        'file': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            properties={
+                                'name': openapi.Schema(
+                                    type=openapi.TYPE_STRING,
+                                    example='examplefile.ext'
+                                ),
+                                'hash': openapi.Schema(
+                                    description="IPFS multihash of the uploaded file.",
+                                    type=openapi.TYPE_STRING,
+                                    example='Qm1234567890abcdefghijklmnopqrstuvwxyzABCDEFGH'
+                                ),
+                                'size': openapi.Schema(
+                                    description="Uploaded file size in a human-readable form.",
+                                    type=openapi.TYPE_STRING,
+                                    example='42.4 kB'
+                                ),
+                                'url': openapi.Schema(
+                                    description="URL of the uploaded file on the public ipfs.io gateway.",
+                                    type=openapi.TYPE_STRING,
+                                    example='https://ipfs.io/ipfs/Qm1234567890abcdefghijklmnopqrstuvwxyzABCDEFGH/examplefile.ext'
+                                ),
+                                'id': openapi.Schema(type=openapi.TYPE_INTEGER)
+                            }
+                        )
+                    }
                 )
             ),
-            coreapi.Field(
-                name="file",
-                required=True,
-                location="form",
-                schema=coreschema.String(
-                    # TODO: try switching to OpenAPI?
-                    # CoreAPI was last updated in 2017, so coreschema.File might not happen sometime soon...
-                    description="File. Uploading from Swagger **not implemented yet**."
+            403: openapi.Response(
+                description="Occurs when authentication token is not provided or valid.",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'detail': openapi.Schema(
+                            description="Error message describing why file upload failed.",
+                            type=openapi.TYPE_STRING,
+                            example='token not provided'
+                        )
+                    }
                 )
-
             )
-        ]
+        }
     )
-
     def put(self, request, format=None):
         file_obj = request.FILES.get('file')
         file_name = file_obj.name
@@ -72,22 +120,36 @@ class UploadAPIView(APIView):
             raise AuthenticationFailed(detail="token not provided")
 
 
+@method_decorator(name='get', decorator=swagger_auto_schema(
+    manual_parameters=[
+        openapi.Parameter(
+            name="token",
+            in_=openapi.IN_QUERY,
+            description="Token. Used to fetch only those files owned by the currently authenticated user "
+                        "(and prevent seeing other people's files without permission).",
+            type=openapi.TYPE_STRING,
+            required=True
+        )
+    ],
+    responses={
+        403: openapi.Response(
+            description="Occurs when authentication token is not provided or valid.",
+            schema=openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    'detail': openapi.Schema(
+                        description="Error message describing why the file lookup failed.",
+                        type=openapi.TYPE_STRING,
+                        example='token not provided'
+                    )
+                }
+            )
+        )
+    }
+))
 class FileListAPIView(generics.ListAPIView):
     queryset = File.objects.all()
     serializer_class = FileModelSerializer
-
-    schema = AutoSchema(
-        manual_fields=[
-            coreapi.Field(
-                name="token",
-                required=True,
-                schema=coreschema.String(
-                    description="Token. Used to fetch only those files owned by the currently authenticated user "
-                                "(and prevent seeing other people's files without permission)."
-                )
-            )
-        ]
-    )
 
     def get_queryset(self, *args, **kwargs):
         qs = self.queryset.none()

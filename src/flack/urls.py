@@ -16,17 +16,22 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-from rest_framework.schemas import get_schema_view
-from rest_framework_swagger.renderers import SwaggerUIRenderer, OpenAPIRenderer
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 
 from .views import dashboard
 
-schema_view = get_schema_view(title='API Reference', renderer_classes=[OpenAPIRenderer, SwaggerUIRenderer])
+schema_view = get_schema_view(
+    openapi.Info(
+        title="API Reference",
+        default_version='v1',
+    ),
+)
 
 urlpatterns = [
     path('', dashboard, name='dashboard'),
     path('admin/', admin.site.urls),
-    path('api/', schema_view),
+    path('api/', schema_view.with_ui('swagger')),
     path('api/auth/', include('app_auth.api.urls', namespace='auth-api')),
     path('api/rooms/', include('app_rooms.api.urls', namespace='room-api')),
     path('api/messages/', include('app_messages.api.urls', namespace='message-api')),
