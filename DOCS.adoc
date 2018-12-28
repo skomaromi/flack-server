@@ -1,9 +1,9 @@
 = Documentation
 :toc:
+:toc-title:
 :toclevels: 3
 
-Introduction
-~~~~~~~~~~~~
+== Introduction
 
 To communicate with the server, a client needs to use both REST and
 WebSocket. WebSocket is used for quasi-realtime communication (sending
@@ -12,11 +12,9 @@ performed using the REST-ish API (log in, register, file upload, etc.).
 Documentation for the REST part is provided using Swagger and can be
 viewed by visiting `localhost:8000/api` on a running server.
 
-WebSocket communication
-~~~~~~~~~~~~~~~~~~~~~~~
+== WebSocket communication
 
-Step 1: Connection
-^^^^^^^^^^^^^^^^^^
+=== Step 1: Connection
 
 To start communicating with the server using WebSocket, a connection
 needs to be opened to an address as per the format provided below.
@@ -53,8 +51,7 @@ i.e. resend all the room and message creation notifications the client
 device has missed since the last time it connected to the server, based
 on the last room or message ID provided.
 
-Step 2: Creating a room
-^^^^^^^^^^^^^^^^^^^^^^^
+=== Step 2: Creating a room
 
 A room creation request is a JSON object and it follows the structure
 below.
@@ -89,8 +86,7 @@ user ID of a participant. Should contain the creator’s ID as well. Does
 not have to be sorted. Each room must have at least two participants,
 so, apart from the creator’s ID, at least one new ID should be provided.
 
-Responses and notifications
-+++++++++++++++++++++++++++
+==== Responses and notifications
 
 Once a room creation request is successfully processed, the server send
 the sender a response, and all the clients connected to the WebSocket
@@ -175,8 +171,7 @@ notification is relevant to the device and its owner.
 ** `time`: Room creation time. Used for synchronization and sorting
 purposes.
 
-Step 3: Sending a message
-^^^^^^^^^^^^^^^^^^^^^^^^^
+=== Step 3: Sending a message
 
 Sending a message is done using WebSocket protocol, so its creation
 request bears some resemblances to the room creation request, but it
@@ -228,8 +223,7 @@ sender’s location retrieved via device’s built-in location methods. Has
 two float attributes, `latitude` and `longitude`. If no location is
 provided, set `location` to `null`.
 
-Responses and notifications
-+++++++++++++++++++++++++++
+==== Responses and notifications
 
 Assuming that the file has been successfully uploaded and the message
 successfully stored and forwarded to all the concerned parties, er,
