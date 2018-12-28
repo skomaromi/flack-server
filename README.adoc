@@ -1,0 +1,73 @@
+= Flack Server
+
+Chat server designed as a back end counterpart to
+https://github.com/skomaromi/flack-client-android[this Android client].
+
+Getting started
+~~~~~~~~~~~~~~~
+
+_Inspired by Coding For Entrepreneurs’ Rapid-ChatXChannels start
+https://github.com/codingforentrepreneurs/Rapid-ChatXChannels/blob/master/README.md[guide].
+Steps provided are written from an Ubuntu (18.10) perspective. Should
+work on other Debian-based Linux distributions as well. Windows and
+macOS users should not try to follow this blindly._
+
+1.  Install dependencies.
++
+[source,bash]
+----
+$ sudo apt install virtualenv python3-dev build-essential curl redis-server
+----
+2.  https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions[Install NodeJS.]
+3.  https://github.com/ipfs-shipyard/ipfs-desktop#install[Install IPFS and start it.]
+
+Now, assuming you’re in the main repository directory (`ls` output
+includes `run-server.sh`), you need to do the following:
+
+1.  Create a virtual environment.
++
+[source,bash]
+----
+$ virtualenv -p python3 .
+----
+
+2.  Enter (activate) it.
++
+[source,bash]
+----
+$ source bin/activate
+----
+
+3.  Once in there, install all the dependencies it might need.
++
+[source,bash]
+----
+(flack-server) $ pip install -r requirements.txt
+----
+
+4.  Still in virtual environment, create an administrator user.
++
+[source,bash]
+----
+(flack-server) $ cd src
+(flack-server) $ python manage.py migrate
+(flack-server) $ python manage.py createsuperuser
+----
+
+5.  Done!
+
+Run
+~~~
+
+1.  Make sure IPFS daemon is running.
+2.  Execute `run-server.sh`.
+
+Next steps
+~~~~~~~~~~
+
+Now that your server is up and running, you can:
+
+* play around with the built-in web interface at `localhost:8000`,
+* use the https://github.com/skomaromi/flack-client-android[Android
+client] or
+* roll your own solution (link:DOCS.md[documentation] might help here).
