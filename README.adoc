@@ -3,8 +3,7 @@
 Chat server designed as a back end counterpart to
 https://github.com/skomaromi/flack-client-android[this Android client].
 
-Getting started
-~~~~~~~~~~~~~~~
+== Getting started
 
 _Inspired by Coding For Entrepreneurs’ Rapid-ChatXChannels start
 https://github.com/codingforentrepreneurs/Rapid-ChatXChannels/blob/master/README.md[guide].
@@ -56,14 +55,12 @@ $ source bin/activate
 
 5.  Done!
 
-Run
-~~~
+== Run
 
 1.  Make sure IPFS daemon is running.
 2.  Execute `run-server.sh`.
 
-Next steps
-~~~~~~~~~~
+== Next steps
 
 Now that your server is up and running, you can:
 
