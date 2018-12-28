@@ -1,44 +1,63 @@
 # Flack Server
 
-## Install
-*Inspired by Coding For Entrepreneurs' Rapid-ChatXChannels start [guide](https://github.com/codingforentrepreneurs/Rapid-ChatXChannels/blob/master/README.md)*
+Chat server designed as a back end counterpart to [this Android client](https://github.com/skomaromi/flack-client-android).
 
-1. install all sorts of stuff we will need for this
+
+
+## Getting started
+
+*Inspired by Coding For Entrepreneurs' Rapid-ChatXChannels start [guide](https://github.com/codingforentrepreneurs/Rapid-ChatXChannels/blob/master/README.md). Steps provided are written from an Ubuntu (18.10) perspective. Should work on other Debian-based Linux distributions as well. Windows and macOS users should not try to follow this blindly.*
+
+1. Install dependencies.
 ```bash
 $ sudo apt install virtualenv python3-dev build-essential curl redis-server
 ```
 
-2. [install NodeJS](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
+2. [Install NodeJS.](https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions)
 
-3. [install IPFS and start it](https://github.com/ipfs-shipyard/ipfs-desktop#install)
+3. [Install IPFS and start it.](https://github.com/ipfs-shipyard/ipfs-desktop#install)
 
 
-Now, assuming you're in the repository directory (`ls` gives you files like `run-server.sh`), you need to do the following:
+Now, assuming you're in the main repository directory (`ls` output includes `run-server.sh`), you need to do the following:
 
-1. create a virtual environment
+1. Create a virtual environment.
 ```bash
-virtualenv -p python3 .
+$ virtualenv -p python3 .
 ```
 
-2. enter (er, activate) it
+2. Enter (activate) it.
 ```bash
 $ source bin/activate
 ```
 
-3. once in there, install all the funny dependencies it might need
+3. Once in there, install all the dependencies it might need.
 ```bash
-$ pip install -r requirements.txt
+(flack-server) $ pip install -r requirements.txt
 ```
 
-4. still in venv, create an admin user
+4. Still in virtual environment, create an administrator user.
 ```bash
-$ cd src
-$ python manage.py migrate
-$ python manage.py createsuperuser
+(flack-server) $ cd src
+(flack-server) $ python manage.py migrate
+(flack-server) $ python manage.py createsuperuser
 ```
 
-5. done!
+5. Done!
+
+
 
 ## Run
-1. make sure IPFS daemon is running
-2. execute `run-server.sh`
+
+1. Make sure IPFS daemon is running.
+2. Execute `run-server.sh`.
+
+
+
+## Next steps
+
+Now that your server is up and running, you can:
+
+* play around with the built-in web interface at `localhost:8000`,
+* use the [Android client](https://github.com/skomaromi/flack-client-android) or
+* roll your own solution ([documentation](DOCS.md) might help here).
+
