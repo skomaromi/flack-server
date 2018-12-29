@@ -1,7 +1,7 @@
 = Documentation
 :toc:
 :toc-title:
-:toclevels: 3
+:toclevels: 4
 
 == Introduction
 
@@ -88,17 +88,50 @@ so, apart from the creator’s ID, at least one new ID should be provided.
 
 ==== Responses and notifications
 
-Once a room creation request is successfully processed, the server send
-the sender a response, and all the clients connected to the WebSocket
-server are sent a copy of the created room in the form of a
+Once a room creation request is successfully processed, the server
+sends the sender a response, and all the clients connected to the
+WebSocket server are sent a copy of the created room in the form of a
 notification.
 
-Response is a copy of received room data as well, but it contains less
-data than the notification. Received response data should be used for:
+Response is a copy of received room data as well, but they are designed
+as a copy of received data specially made for and sent to the sender,
+potentially containing data other users should not see or simply don't
+care about. In this case though, the response contains less data than
+the notification. Received response data, if room ID unique in device
+database, should be used for:
 
-* storing the room in device’s database,
+* storing the room in database,
 * updating synchronization data used in Step 1 and
-* if visible, updating chat room list.
+* if room list visible, adding the newly received room to it.
+
+Updating synchronization data is important because the server uses the
+provided data to resend all the rooms and messages the device has
+missed since last connected, i.e. this way the server tries to make the
+device "catch up" with the rest of the devices currently connected. If
+the IDs are too far in the past, server will resend a lot of
+notifications of which very few or none are of relevance to the device.
+
+When resending notifications, server uses the same form and values as
+when they were broadcast the first time (shown later in this document),
+except for the `sender_unique` attribute, which is now set to
+`server-notification-repeat`, as the original `sender_unique` value
+might no longer be available when the device reconnects. Even though
+it's a resent event, it requires no additional handling in client code
+as it uses the same structure as the original notifications. In case of
+improperly set synchronization data, it might be useful to verify that
+each room or message is unique, i.e. not already stored in device's
+database.
+
+Updating synchronization data in the
+https://github.com/skomaromi/flack-client-android[reference Android
+client implementation] consists of fetching creation time of the last
+room stored in the device's preferences storage and comparing it to the
+room just received. If the new time is greater than the old one, then
+both ID and creation time of the new room are saved in the preferences
+storage, replacing the old room data. Same logic is applied to updating
+last message ID and time created in Step 3.
+
+===== Response
 
 Structure of a response to a room creation request is shown below.
 
@@ -123,11 +156,9 @@ of that, the value of this attribute is `room`.
 ** `name`: Name of the created room.
 ** `id`: ID of the room on server.
 ** `time`: Room creation time described in milliseconds since the Unix
-epoch. Along with `id`, one of crucial parts of the synchronization
-procedure outlined in Step 1. If greater than the time created of the
-last room stored, stored room ID and creation time should be replaced by
-data received in this response. Should be used in sorting chat rooms as
-well.
+epoch.
+
+===== Notification
 
 Structure of a notification for a newly created room is given below.
 
@@ -155,21 +186,51 @@ clients along with `response`.
 ** `object`: String describing the type of the object the notification
 is about, in this case `room`.
 ** `name`: Name of the created room.
-** `id`: Server ID of the created room. Used for synchronization and
-sorting purposes.
+** `id`: Server ID of the created room.
 ** `sender`: String containing the name of the user who created the
 room. Useful for showing in notifications.
-** `sender_id`: Server ID of the creator. Useful when determining
-whether a notification should be shown depending on whether the room
-originates from a completely different user.
-** `sender_unique`: Unique sender device identifier. Should be used to
-ignore the notification on the device the room was created on, as it has
-already received all the necessary room details from the response.
-** `participants`: If the `sender_unique` value is different from the
-client device’s value, this is used to determine whether the
-notification is relevant to the device and its owner.
+** `sender_id`: Server ID of the creator.
+** `sender_unique`: Unique sender device identifier.
+** `participants`: An array of server IDs of users that are a part of
+the room whose creation is being announced in the notification.
 ** `time`: Room creation time. Used for synchronization and sorting
 purposes.
+
+===== Handling notifications
+
+Not every room sent in the form of a notification should be presented
+to the user or even used to update synchronization data. In other
+words: some sort of filtering needs to be performed on the client side
+to determine whether the received notification requires any action at
+all.
+
+The first condition, necessary to even consider the notification, as
+implemented in the Android client, is to check whether the provided
+`participants` array contains ID of the current user.
+
+If it does, the next step is to compare device's `sender_unique` value
+to the one passed in the notification. If they are different, an
+attempt to store the room to the database should be performed. If that
+action was successful, synchronization data should be updated and the
+room added to the interface. Assume that successful addition to the
+database means that this is the first time that room has been received.
+If the `sender_unique` values are the same, the device has already
+received all the necessary data through the response, i.e. drop the
+notification if those two values are equal.
+
+Conditions for generating a system notification are a bit more complex.
+To generate a notification:
+
+* this needs to be the first time this room has been received (addition
+to the database was successful),
+* `sender_id` in the notification must be different from the current
+user's ID (otherwise, it's just a room created by this user on this or
+some other device and repeated using a notification, so no need to
+notify this user, who created the room, about it) and
+* the user is currently *not* viewing the list of chat rooms.
+
+That's it. Handling done. The notification has been successfully combed
+through.
 
 === Step 3: Sending a message
 
@@ -180,10 +241,10 @@ with the feature of exchanging files, Flack had to feature it as well.
 To add a file to a message, before sending a message creation request
 via WebSocket, the file needs to be uploaded using the file upload REST
 endpoint. The endpoint should return, among other data, the server ID of
-the uploaded file. Returned data can be stored on the device to later
-share the file in multiple chat rooms.
+the uploaded file. Returned data can be stored on the device to be able
+to share the same file again later, without the need of reuploading.
 
-Also, if the sender feels like that, they should be able to share their
+Also, if sender feels like that, they should be able to share their
 location.
 
 Structure of the message creation request is given below.
@@ -269,21 +330,49 @@ notification. In step 2 we had a `room` here, now it’s a `message`.
 ** `content`: Content of the message sent.
 ** `file`: A child object carrying relevant data about the file
 attached. If no file is attached, the value of this attribute is `null`.
-Contains three attributes: `name` - the attached file’s name; `hash` -
-IPFS multihash of the attached file, usable in redistribution outside of
-Flack and `url` - URL of the shared file on public IPFS gateway.
+Contains three attributes:
+*** `name` - the attached file’s name;
+*** `hash` - IPFS multihash of the attached file, usable in
+redistribution outside of Flack; and
+*** `url` - URL of the shared file on the public IPFS gateway.
 ** `room`: Server ID of the room the message belongs in.
 ** `room_name`: Name of the room the message belongs in. Used to easily
 construct notifications.
 ** `room_participants`: Array of participant user IDs. Used to easily
 filter irrelevant notifications.
 ** `sender`: Name of the message sender.
-** `sender_id`: Server ID of the user. Used to determine whether to
-create a notification or just silently add the received message to the
-database and, if applicable, interface.
+** `sender_id`: Server ID of the user who sent it.
 ** `sender_unique`: Unique identifier of the sender device.
-** `location`: Child object containing location data. Has a `null` value
-if not set.
+** `location`: Child object containing location data. Has a `null`
+value if not set.
 ** `message_id`: Server ID of the message received.
 ** `time`: Message creation time on server. Used for sorting and
 synchronization along with `message_id`.
+
+===== Handling notifications
+
+Storing to the database, updating synchronization data and adding to
+the interface in case of a response should be performed under the same
+condition as with the room response: message ID has to be unique in
+database.
+
+Handling message notifications is pretty much done the same way as room
+notifications as well, but there is a difference when deciding whether
+to show a system notification. The stuff which comes before that is the
+same. Notifications should only be considered if the participants list
+(`room_participants` here) contains the current user's ID. If it does,
+check whether the `sender_unique` value is different from the one on
+the current device and, if it is, store the message to the database. If
+that passes, update synchronization data and add the message to the
+interface.
+
+So far the same, but here comes the difference.
+
+System notification in case of a message should only be shown if:
+
+* addition to the database was successful (no duplicates),
+* `sender_id` is different from the current user's ID,
+* user is *not* currently viewing the room the message should end up in
+and
+* user is not on the room list (so, application is either closed or the
+user is currently reading messages of another room).
