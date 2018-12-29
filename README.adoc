@@ -67,4 +67,4 @@ Now that your server is up and running, you can:
 * play around with the built-in web interface at `localhost:8000`,
 * use the https://github.com/skomaromi/flack-client-android[Android
 client] or
-* roll your own solution (link:DOCS.md[documentation] might help here).
+* roll your own solution (link:DOCS.adoc[documentation] might help here).
