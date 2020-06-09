@@ -1,70 +1,93 @@
-= Flack Server
+= Flack
 
-Chat server designed as a back end counterpart to
-https://github.com/skomaromi/flack-client-android[this Android client].
+[.normal]
+Flack is a simple chat system relying on WebSocket protocol to provide
+quasi-realtime communication and IPFS to store files shared in conversations.
+Conversations are organized as rooms, where each room has at least two
+participants. Participants can send messages and optionally attach their GPS
+location and files to them.
+
+This is the repository for Flack's server (back end) component. It uses Django
+for data storage, Django Channels for communication using WebSocket protocol,
+Django REST framework to facilitate other non-realtime REST-based activities
+such as file uploads, logging in and registering and `django-ipfs-storage` to
+integrate IPFS support in Django.
+
+The server provides a minimalist web interface used to ensure all the core
+functionalities work properly. While it supports most of implemented features,
+it is created primarily for debugging purposes. The
+https://github.com/skomaromi/flack-client-android[Android client] is the
+preferred method of communicating with other users.
+
+== Screenshots
+
+:imagesdir: docs/img
+image:initial.png[Initial interface state, 320]
+image:messages.png[Interface after a few messages exchanged, 320]
 
 == Getting started
 
-_Inspired by Coding For Entrepreneurs’ Rapid-ChatXChannels start
-https://github.com/codingforentrepreneurs/Rapid-ChatXChannels/blob/master/README.md[guide].
-Steps provided are written from an Ubuntu (18.10) perspective. Should
-work on other Debian-based Linux distributions as well. Windows and
-macOS users should not try to follow this blindly._
+=== Installation
 
-1.  Install dependencies.
+The steps below describe the installation process on a machine running Ubuntu.
+It should work with minimal changes on Debian, but it has not been tested.
+Users running other Linux distributions, especially those running Windows or
+macOS will have to make some adjustments to steps provided.
+
+1. Install system dependencies.
 +
 [source,bash]
 ----
-$ sudo apt install virtualenv python3-dev build-essential curl redis-server
+sudo apt install git virtualenv python3-dev build-essential curl redis-server libappindicator3-1
 ----
-2.  https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions[Install NodeJS.]
-3.  https://github.com/ipfs-shipyard/ipfs-desktop#install[Install IPFS and start it.]
 
-Now, assuming you’re in the main repository directory (`ls` output
-includes `run-server.sh`), you need to do the following:
+2. https://github.com/nodesource/distributions/blob/master/README.md#installation-instructions[Install Node.js].
 
-1.  Create a virtual environment.
+3. https://github.com/ipfs-shipyard/ipfs-desktop#install[Install IPFS Desktop]
+and start it from your system's application launcher or start menu.
+
+4. Go to the Settings tab in opened IPFS Desktop window. Under the _IPFS
+Config_ section find Gateway key in Addresses object and change its value from
+`"/ip4/127.0.0.1/tcp/8080"` to `"/ip4/0.0.0.0/tcp/8080"`.
+
+5. Restart IPFS Desktop. Shut IPFS Desktop down by right-clicking the IPFS
+icon in system tray and selecting Quit. Once the IPFS icon is no longer
+present in tray, start IPFS Desktop.
+
+6. Clone this repository and enter cloned directory.
 +
 [source,bash]
 ----
-$ virtualenv -p python3 .
+git clone https://github.com/skomaromi/flack-server.git
+cd flack-server
 ----
 
-2.  Enter (activate) it.
+7. Add execute permission to `setup.sh` and run it. In the setup process, an
+administrator account will be created. Enter values of your choice for its
+username, email address and password when prompt appears.
 +
 [source,bash]
 ----
-$ source bin/activate
+chmod +x setup.sh
+./setup.sh
 ----
 
-3.  Once in there, install all the dependencies it might need.
+=== Starting
+
+1. Start IPFS Desktop if it isn't running already.
+
+2. Start the server by executing `run.sh`.
 +
 [source,bash]
 ----
-(flack-server) $ pip install -r requirements.txt
+./run.sh
 ----
 
-4.  Still in virtual environment, create an administrator user.
-+
-[source,bash]
-----
-(flack-server) $ cd src
-(flack-server) $ python manage.py migrate
-(flack-server) $ python manage.py createsuperuser
-----
+=== Usage
 
-5.  Done!
+Once the server is started, you can:
 
-== Run
-
-1.  Make sure IPFS daemon is running.
-2.  Execute `run-server.sh`.
-
-== Next steps
-
-Now that your server is up and running, you can:
-
-* play around with the built-in web interface at `localhost:8000`,
-* use the https://github.com/skomaromi/flack-client-android[Android
-client] or
-* roll your own solution (link:DOCS.adoc[documentation] might help here).
+* connect to it using the
+https://github.com/skomaromi/flack-client-android[Android client];
+* use the built-in web interface at `localhost:8000`; or
+* roll your own client (the link:docs/DOCS.adoc[documentation] might help here).
