@@ -3,7 +3,7 @@
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
-import ipfs_storage
+import app_files.storage.ipfs_storage
 
 
 class Migration(migrations.Migration):
@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name='File',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file', models.FileField(storage=ipfs_storage.InterPlanetaryFileSystemStorage(), upload_to='')),
+                ('file', models.FileField(storage=app_files.storage.ipfs_storage.InterPlanetaryFileSystemStorage(), upload_to='')),
                 ('name', models.CharField(max_length=255)),
                 ('ipfs_hash', models.TextField()),
                 ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='files', to=settings.AUTH_USER_MODEL)),

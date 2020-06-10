@@ -8,12 +8,14 @@ Original author: Ben Jeffrey (@jeffbr13, https://github.com/jeffbr13)
 
 
 from urllib.parse import urlparse
+import ipfshttpclient
+from IPy import IP
+from multiaddr import Multiaddr
 
 from django.conf import settings
 from django.core.files.base import File, ContentFile
 from django.core.files.storage import Storage
 from django.utils.deconstruct import deconstructible
-import ipfsapi
 
 
 __version__ = '0.0.4'
@@ -38,9 +40,8 @@ class InterPlanetaryFileSystemStorage(Storage):
                             Defaults to 'https://ipfs.io/ipfs/'.
         """
         parsed_api_url = urlparse(api_url or getattr(settings, 'IPFS_STORAGE_API_URL', 'http://localhost:5001/api/v0/'))
-        self._ipfs_client = ipfsapi.connect(
-            parsed_api_url.hostname,
-            parsed_api_url.port,
+        self._ipfs_client = ipfshttpclient.connect(
+            IPFSHelper.url_to_multiaddr(parsed_api_url),
             parsed_api_url.path.strip('/')
         )
         self.gateway_url = gateway_url or getattr(settings, 'IPFS_STORAGE_GATEWAY_URL', 'https://ipfs.io/ipfs/')
@@ -63,9 +64,11 @@ class InterPlanetaryFileSystemStorage(Storage):
         file = self._ipfs_client.add(content, wrap_with_directory=True)
 
         if len(file) == 2:
+            # storing hash for wrapping directory (file[1]) instead of the hash of file itself (file[0]) as only this
+            # way file's name will not be lost
             file_wrapped = file[1]
             file_hash = file_wrapped.get('Hash')
-            self._ipfs_client.pin_add(file_hash)
+            self._ipfs_client.pin.add(file_hash)
             return file_hash
         else:
             raise IOError("An error occurred while uploading the file to IPFS.")
@@ -80,11 +83,11 @@ class InterPlanetaryFileSystemStorage(Storage):
 
     def size(self, name: str) -> int:
         """Total size, in bytes, of IPFS content with multihash `name`."""
-        return self._ipfs_client.object_stat(name)['CumulativeSize']
+        return self._ipfs_client.object.stat(name)['CumulativeSize']
 
     def delete(self, name: str):
         """Unpin IPFS content from the daemon."""
-        self._ipfs_client.pin_rm(name)
+        self._ipfs_client.pin.rm(name)
 
     def url(self, name: str):
         """Returns an HTTP-accessible Gateway URL by default.
@@ -99,3 +102,55 @@ class InterPlanetaryFileSystemStorage(Storage):
         filename = obj_list.get('Objects')[0].get('Links')[0].get('Name')
 
         return '{gateway_url}{multihash}/{filename}'.format(gateway_url=self.gateway_url, multihash=name, filename=filename)
+
+
+class IPFSHelper:
+    @staticmethod
+    def _detect_dns_type(hostname):
+        try:
+            ip = IP(hostname)
+            return "ip" + str(ip.version())
+        except ValueError:
+            return "dns4"
+
+    @staticmethod
+    def _detect_port_number(scheme):
+        if scheme == "http" or scheme == "ws":
+            return 80
+        elif scheme == "https" or scheme == "wss":
+            return 443
+        else:
+            return 0
+
+    @staticmethod
+    def url_to_multiaddr(url, dns_type=None):
+        multiaddr_str = ""
+
+        hostname = url.hostname
+        scheme = url.scheme
+
+        # dns type
+        dt = dns_type
+        if dt is None:
+            dt = IPFSHelper._detect_dns_type(hostname)
+        multiaddr_str += f'/{dt}'
+
+        # hostname
+        multiaddr_str += f'/{hostname}'
+
+        # transport layer protocol
+        tlp = "tcp"
+        if scheme == "udp":
+            tlp = "udp"
+        multiaddr_str += f'/{tlp}'
+
+        # port
+        port = url.port
+        if port is None:
+            port = IPFSHelper._detect_port_number(scheme)
+        multiaddr_str += f'/{port}'
+
+        if scheme != tlp:
+            multiaddr_str += f'/{scheme}'
+
+        return Multiaddr(multiaddr_str)
