@@ -15,7 +15,7 @@ daphne==2.2.2
 Django==2.1.5
 django-ipfs-storage==0.0.4
 django-rest-swagger==2.2.0
-djangorestframework==3.8.2
+djangorestframework==3.11.2
 drf-yasg==1.11.1
 hiredis==0.2.0
 humanize==0.5.1
