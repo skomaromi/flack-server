@@ -25,7 +25,7 @@ incremental==17.5.0
 inflection==0.3.1
 IPy==1.0
 itypes==1.1.0
-Jinja2==2.10
+Jinja2==2.11.3
 MarkupSafe==1.1.0
 msgpack==0.5.6
 netifaces==0.10.7
